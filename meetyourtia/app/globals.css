@@ -11,12 +11,16 @@
 @layer utilities {
   /* Gold shimmer effect for cards */
   .card-shimmer {
-    @apply relative;
+    position: relative;
   }
   
   .card-shimmer::before {
     content: '';
-    @apply absolute top-0 left-0 right-0 h-px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
     background: linear-gradient(
       90deg,
       transparent,
@@ -38,7 +42,8 @@
   .btn-gold {
     background: linear-gradient(135deg, #c9a96e, #906030);
     box-shadow: 0 4px 16px rgba(201,169,110,.25);
-    @apply text-[#0a0a0a] font-medium;
+    color: #0a0a0a;
+    font-weight: 500;
     letter-spacing: 0.03em;
   }
   
@@ -65,7 +70,7 @@
   
   /* Smooth transitions */
   .transition-smooth {
-    @apply transition-all duration-150 ease-in-out;
+    transition: all 150ms ease-in-out;
   }
   
   /* Hide scrollbar but keep functionality */
