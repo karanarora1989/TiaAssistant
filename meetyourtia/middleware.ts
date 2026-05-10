@@ -50,4 +50,5 @@ export const config = {
     // Always run for API routes
     '/(api|trpc)(.*)',
   ],
+  runtime: 'nodejs', // Force Node.js runtime for Clerk compatibility
 };
