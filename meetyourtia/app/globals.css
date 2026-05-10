@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-app-base text-text-primary;
+    @apply bg-[#050505] text-[#e0e0e0];
   }
 }
 
@@ -36,24 +36,31 @@
   
   /* Gold gradient button */
   .btn-gold {
-    @apply bg-gold-gradient shadow-gold-glow text-[#0a0a0a] font-medium tracking-wider-03;
+    background: linear-gradient(135deg, #c9a96e, #906030);
+    box-shadow: 0 4px 16px rgba(201,169,110,.25);
+    @apply text-[#0a0a0a] font-medium;
+    letter-spacing: 0.03em;
   }
   
   /* Glowing status dots */
   .dot-gold {
-    @apply bg-gold shadow-dot-gold;
+    background-color: #c9a96e;
+    box-shadow: 0 0 6px rgba(201,169,110,.66);
   }
   
   .dot-green {
-    @apply bg-done-green shadow-dot-green;
+    background-color: #4a9a4a;
+    box-shadow: 0 0 5px rgba(74,154,74,.44);
   }
   
   .dot-red {
-    @apply bg-overdue-red shadow-dot-red;
+    background-color: #d06030;
+    box-shadow: 0 0 5px rgba(208,96,48,.44);
   }
   
   .dot-indigo {
-    @apply bg-[#6060d0] shadow-dot-indigo;
+    background-color: #6060d0;
+    box-shadow: 0 0 5px rgba(96,96,208,.44);
   }
   
   /* Smooth transitions */
