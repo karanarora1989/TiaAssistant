@@ -23,9 +23,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+    >
       <html lang="en">
-        <body className={`${inter.variable} font-sans antialiased bg-app-base text-text-primary`}>
+        <body className={`${inter.variable} font-sans antialiased bg-[#050505] text-[#e0e0e0]`}>
           {children}
         </body>
       </html>
