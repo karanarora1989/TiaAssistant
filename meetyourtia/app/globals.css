@@ -3,10 +3,6 @@
 @tailwind utilities;
 
 @layer base {
-  * {
-    @apply border-border-1;
-  }
-  
   body {
     @apply bg-app-base text-text-primary;
   }
