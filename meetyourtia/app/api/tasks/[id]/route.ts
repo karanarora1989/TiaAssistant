@@ -7,11 +7,11 @@ import { successResponse, errorResponse } from '@/lib/api-handler';
 // GET single task
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getAuthUserId();
-    const taskId = params.id;
+    const { id: taskId } = await params;
 
     const { data: task, error } = await supabaseAdmin
       .from('tasks')
@@ -34,11 +34,11 @@ export async function GET(
 // PATCH update task
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getAuthUserId();
-    const taskId = params.id;
+    const { id: taskId } = await params;
     const body = await req.json();
 
     const {
