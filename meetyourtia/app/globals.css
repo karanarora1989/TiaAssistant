@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border-1;
+  }
+  
+  body {
+    @apply bg-app-base text-text-primary;
+  }
+}
+
+@layer utilities {
+  /* Gold shimmer effect for cards */
+  .card-shimmer {
+    @apply relative;
+  }
+  
+  .card-shimmer::before {
+    content: '';
+    @apply absolute top-0 left-0 right-0 h-px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(201, 169, 110, 0.2),
+      transparent
+    );
+  }
+  
+  .card-shimmer-strong::before {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(201, 169, 110, 0.35),
+      transparent
+    );
+  }
+  
+  /* Gold gradient button */
+  .btn-gold {
+    @apply bg-gold-gradient shadow-gold-glow text-[#0a0a0a] font-medium tracking-wider-03;
+  }
+  
+  /* Glowing status dots */
+  .dot-gold {
+    @apply bg-gold shadow-dot-gold;
+  }
+  
+  .dot-green {
+    @apply bg-done-green shadow-dot-green;
+  }
+  
+  .dot-red {
+    @apply bg-overdue-red shadow-dot-red;
+  }
+  
+  .dot-indigo {
+    @apply bg-[#6060d0] shadow-dot-indigo;
+  }
+  
+  /* Smooth transitions */
+  .transition-smooth {
+    @apply transition-all duration-150 ease-in-out;
+  }
+  
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
