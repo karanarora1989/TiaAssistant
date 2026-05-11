@@ -1,17 +1,18 @@
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { currentUser } from '@clerk/nextjs/server';
 
 /**
  * Get authenticated user ID from Clerk
  * Throws if not authenticated
+ * Uses currentUser() instead of auth() to work without middleware
  */
 export async function getAuthUserId(): Promise<string> {
-  const { userId } = await auth();
+  const user = await currentUser();
   
-  if (!userId) {
+  if (!user) {
     throw new Error('Unauthorized');
   }
   
-  return userId;
+  return user.id;
 }
 
 /**
