@@ -5,6 +5,7 @@ import { callClaude, parseClaudeJSON } from '@/lib/claude';
 import { successResponse, errorResponse } from '@/lib/api-handler';
 import { clerkClient } from '@clerk/nextjs/server';
 
+// Force fresh build - using currentUser() for auth without middleware
 export async function POST(req: NextRequest) {
   try {
     const userId = await getAuthUserId();
