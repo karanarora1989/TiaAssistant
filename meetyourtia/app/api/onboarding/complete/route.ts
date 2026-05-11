@@ -111,13 +111,18 @@ Return ONLY valid JSON, no markdown.`;
       });
 
     // Update Clerk metadata
-    const client = await clerkClient();
-    await client.users.updateUserMetadata(userId, {
-      publicMetadata: {
-        onboarding_complete: true,
-        plan: 'free',
-      },
-    });
+    try {
+      const client = await clerkClient();
+      await client.users.updateUser(userId, {
+        publicMetadata: {
+          onboarding_complete: true,
+          plan: 'free',
+        },
+      });
+    } catch (clerkError: any) {
+      console.error('Clerk metadata update failed (non-critical):', clerkError);
+      // Continue anyway - onboarding data is saved in Supabase
+    }
 
     return successResponse({ success: true }, 'Onboarding completed successfully');
   } catch (error: any) {
