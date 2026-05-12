@@ -35,22 +35,22 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-20 pb-16 text-center">
         <h1 className="text-5xl md:text-6xl font-light tracking-tighter-03 mb-6 leading-tight">
-          Your tasks.<br />
-          Finally handled.
+          Meet Tia.<br />
+          She remembers, so you don't have to.
         </h1>
         
         <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
           <div className="px-4 py-2 bg-white border border-[#e0e0e0] rounded-full text-sm flex items-center gap-2">
-            <span>🎙</span> Capture by voice
+            <span>💬</span> Talk with her
           </div>
           <div className="px-4 py-2 bg-white border border-[#e0e0e0] rounded-full text-sm flex items-center gap-2">
-            <span>📋</span> Track everything
+            <span>🌪️</span> Organizes your chaos
           </div>
           <div className="px-4 py-2 bg-white border border-[#e0e0e0] rounded-full text-sm flex items-center gap-2">
-            <span>✓</span> Close every loop
+            <span>🧠</span> Remembers everything
           </div>
           <div className="px-4 py-2 bg-white border border-[#e0e0e0] rounded-full text-sm flex items-center gap-2">
-            <span>🧠</span> Learns who you are
+            <span>🎯</span> Your second brain
           </div>
         </div>
         
@@ -61,12 +61,12 @@ export default function LandingPage() {
           Start for free
         </button>
         
-        <p className="text-sm text-[#888]">Free up to 5 tasks. No card needed.</p>
+        <p className="text-sm text-[#888]">Start free. No credit card. Just talk to Tia.</p>
       </section>
 
       {/* Pain Points */}
       <section className="max-w-6xl mx-auto px-6 py-16">
-        <h2 className="text-3xl font-light text-center mb-12">Tasks fall through the cracks.</h2>
+        <h2 className="text-3xl font-light text-center mb-12">Your brain is full. Let Tia remember.</h2>
         
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {[
@@ -87,34 +87,34 @@ export default function LandingPage() {
 
       {/* Features */}
       <section id="features" className="max-w-6xl mx-auto px-6 py-16">
-        <h2 className="text-3xl font-light text-center mb-12">Why Tia is the best assistant you could have</h2>
+        <h2 className="text-3xl font-light text-center mb-12">How Tia becomes your second brain</h2>
         
         <div className="grid md:grid-cols-2 gap-8">
           {[
             {
-              title: 'Capture in seconds',
+              title: 'Talk to her naturally',
               description: 'Voice or text. Tell Tia what happened in a meeting. She extracts who\'s doing what, by when.',
-              icon: '🎙',
+              icon: '💬',
             },
             {
-              title: 'Nothing goes stale',
+              title: 'She never forgets',
               description: 'Carry-over tracking shows what\'s aging. Visual cues help you prioritize without guilt.',
-              icon: '📊',
+              icon: '🧠',
             },
             {
               title: 'She learns who you are',
               description: 'Your team, sensitivities, how you work. Tia builds a model of you and gets sharper every day.',
-              icon: '🧠',
+              icon: '✨',
             },
             {
-              title: 'Work + personal together',
-              description: 'One place for everything. Tia keeps them separate but you never switch contexts.',
-              icon: '📋',
+              title: 'One brain for everything',
+              description: 'Work and personal together. Tia keeps them separate but you never switch contexts.',
+              icon: '🎯',
             },
             {
-              title: 'Close loops in one breath',
+              title: 'Update everything at once',
               description: 'Voice an update after a call. Tia updates multiple tasks at once. Swipe done when finished.',
-              icon: '✓',
+              icon: '⚡',
             },
             {
               title: 'Always on, never annoying',
@@ -202,7 +202,7 @@ export default function LandingPage() {
 
       {/* Final CTA */}
       <section className="max-w-6xl mx-auto px-6 py-20 text-center">
-        <h2 className="text-4xl font-light mb-8">Stop letting tasks disappear.</h2>
+        <h2 className="text-4xl font-light mb-8">Ready to remember everything?</h2>
         <button
           onClick={() => router.push('/sign-up')}
           className="px-8 py-4 bg-gradient-to-r from-[#c9a96e] to-[#906030] text-white rounded-2xl text-lg font-medium shadow-lg hover:shadow-xl transition-smooth"
