@@ -9,15 +9,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Backgrounds — layered dark surfaces
-        'app-base': '#050505',
-        'surface-0': '#0d0d0d',
-        'surface-1': '#0f0f0f',
-        'surface-2': '#111111',
-        'surface-3': '#141414',
-        'border-1': '#1a1a1a',
-        'border-2': '#1e1e1e',
-        'border-3': '#222222',
+        // Backgrounds — warm cream light theme
+        'app-base': '#fafaf8',
+        'surface-0': '#fafaf8',
+        'surface-1': '#ffffff',
+        'surface-2': '#f5f5f5',
+        'surface-3': '#eeeeee',
+        'border-1': '#e8e6e3',
+        'border-2': '#d8d6d3',
+        'border-3': '#c8c6c3',
         
         // Gold — Tia's identity
         'gold': '#c9a96e',
@@ -28,11 +28,11 @@ const config: Config = {
         'gold-shimmer-strong': 'rgba(201,169,110,.35)',
         
         // Text
-        'text-primary': '#e0e0e0',
-        'text-secondary': '#888888',
-        'text-muted': '#444444',
-        'text-ghost': '#2a2a2a',
-        'text-invisible': '#1e1e1e',
+        'text-primary': '#0a0a0a',
+        'text-secondary': '#666666',
+        'text-muted': '#999999',
+        'text-ghost': '#cccccc',
+        'text-invisible': '#e8e8e8',
         
         // Status
         'work-blue': '#3a6fae',
