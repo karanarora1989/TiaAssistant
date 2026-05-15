@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, TopBar, LoadingSpinner, Card } from '@/components/tia/shared';
+
+const MAX_DURATION = 300; // 5 minutes
 
 export default function VoiceCapturePage() {
   const router = useRouter();
@@ -10,11 +12,36 @@ export default function VoiceCapturePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState('');
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [shouldContinue, setShouldContinue] = useState(true);
   const recognitionRef = useRef<any>(null);
+
+  // Duration timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (isRecording) {
+      interval = setInterval(() => {
+        setRecordingDuration(prev => {
+          const newDuration = prev + 1;
+          // Auto-stop at 5 minutes
+          if (newDuration >= MAX_DURATION) {
+            stopRecording();
+          }
+          return newDuration;
+        });
+      }, 1000);
+    } else {
+      setRecordingDuration(0);
+    }
+    
+    return () => clearInterval(interval);
+  }, [isRecording]);
 
   const startRecording = () => {
     setError('');
     setTranscript('');
+    setShouldContinue(true);
     
     // Check for Web Speech API support
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -56,7 +83,20 @@ export default function VoiceCapturePage() {
     };
 
     recognition.onend = () => {
-      setIsRecording(false);
+      // Auto-restart if user hasn't stopped and under 5 min
+      if (shouldContinue && recordingDuration < MAX_DURATION) {
+        setTimeout(() => {
+          try {
+            recognition.start();
+          } catch (e) {
+            console.error('Failed to restart:', e);
+            setIsRecording(false);
+          }
+        }, 100);
+      } else {
+        setIsRecording(false);
+        setShouldContinue(true);
+      }
     };
 
     recognitionRef.current = recognition;
@@ -64,6 +104,7 @@ export default function VoiceCapturePage() {
   };
 
   const stopRecording = () => {
+    setShouldContinue(false); // Prevent auto-restart
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       setIsRecording(false);
@@ -130,7 +171,13 @@ export default function VoiceCapturePage() {
         {/* Status */}
         <div className="text-center mb-6">
           {isRecording && (
-            <p className="text-sm text-gold animate-pulse">Listening...</p>
+            <div>
+              <p className="text-sm text-gold animate-pulse">Listening...</p>
+              <p className="text-xs text-text-secondary mt-1">
+                {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                {recordingDuration >= 240 && ' (max 5:00)'}
+              </p>
+            </div>
           )}
           {!isRecording && !transcript && (
             <p className="text-sm text-text-secondary">Tap to start recording</p>

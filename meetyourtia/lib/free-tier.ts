@@ -1,7 +1,7 @@
 import { getOpenTasksCount } from './context';
 import { getUserPlan } from './auth';
 
-export const FREE_TIER_LIMIT = 5;
+export const FREE_TIER_LIMIT = 15;
 
 /**
  * Check if user can create more tasks

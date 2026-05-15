@@ -99,6 +99,106 @@ export default function TaskDetailPage() {
     }
   };
 
+  const handleMoveToTomorrow = async () => {
+    if (!task) return;
+
+    setUpdating(true);
+    setError('');
+
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowISO = tomorrow.toISOString().split('T')[0];
+
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          due_date_iso: tomorrowISO,
+          due_date: 'tomorrow',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update task');
+      }
+
+      setTask(data.data.task);
+      setUpdating(false);
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+      setUpdating(false);
+    }
+  };
+
+  const handleMoveToNext5Days = async () => {
+    if (!task) return;
+
+    setUpdating(true);
+    setError('');
+
+    try {
+      const next5 = new Date();
+      next5.setDate(next5.getDate() + 5);
+      const next5ISO = next5.toISOString().split('T')[0];
+
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          due_date_iso: next5ISO,
+          due_date: 'next 5 days',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update task');
+      }
+
+      setTask(data.data.task);
+      setUpdating(false);
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+      setUpdating(false);
+    }
+  };
+
+  const handleChangeOwner = async () => {
+    if (!task) return;
+
+    const newOwner = prompt('Assign to (name):');
+    if (!newOwner) return;
+
+    setUpdating(true);
+    setError('');
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          assigned_to: [newOwner],
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update task');
+      }
+
+      setTask(data.data.task);
+      setUpdating(false);
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+      setUpdating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center">
@@ -248,6 +348,31 @@ export default function TaskDetailPage() {
       {/* Bottom Actions */}
       {task.status === 'open' && (
         <div className="px-6 pb-6 space-y-2">
+          {/* Quick Actions */}
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <button
+              onClick={handleMoveToTomorrow}
+              disabled={updating}
+              className="px-3 py-2 bg-surface-1 border border-border-1 rounded-xl text-xs text-text-secondary hover:text-text-primary hover:border-gold/30 transition-smooth disabled:opacity-50"
+            >
+              → Tomorrow
+            </button>
+            <button
+              onClick={handleMoveToNext5Days}
+              disabled={updating}
+              className="px-3 py-2 bg-surface-1 border border-border-1 rounded-xl text-xs text-text-secondary hover:text-text-primary hover:border-gold/30 transition-smooth disabled:opacity-50"
+            >
+              → +5 Days
+            </button>
+            <button
+              onClick={handleChangeOwner}
+              disabled={updating}
+              className="px-3 py-2 bg-surface-1 border border-border-1 rounded-xl text-xs text-text-secondary hover:text-text-primary hover:border-gold/30 transition-smooth disabled:opacity-50"
+            >
+              👤 Owner
+            </button>
+          </div>
+
           <Button
             onClick={handleMarkDone}
             disabled={updating}

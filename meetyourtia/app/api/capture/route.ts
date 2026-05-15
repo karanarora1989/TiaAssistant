@@ -39,10 +39,10 @@ Extract ALL tasks mentioned. For each task, determine:
 1. title - clear task description
 2. context - why this task exists
 3. received_from - who delegated/gave this task (array of names)
-4. assigned_to - who does the work (array of names, use "self" if master)
+4. assigned_to - who does the work (array of names). If the user is doing it themselves, use their actual name from context. If assigning to someone else, use that person's name. Never use "self".
 5. participants - everyone mentioned (array)
-6. due_date - flexible format ("Monday", "EOD", "next week")
-7. due_date_iso - ISO date if parseable, null otherwise
+6. due_date - flexible format ("Monday", "EOD", "next week", or "today" if not specified)
+7. due_date_iso - ALWAYS provide an ISO date (YYYY-MM-DD). If date mentioned, use it. If urgent/ASAP, use today. If no urgency mentioned, use tomorrow. Never leave null.
 8. time_sensitivity - "hard", "soft", or "flexible"
 9. task_domain - "work" or "personal" (infer silently)
 10. entity_type - free text (e.g. "project", "patient", "product")
@@ -54,10 +54,10 @@ Return JSON array of tasks:
   "title": "...",
   "context": "...",
   "received_from": [],
-  "assigned_to": [],
+  "assigned_to": ["Actual Name"],
   "participants": [],
-  "due_date": "...",
-  "due_date_iso": "2026-05-10" or null,
+  "due_date": "today",
+  "due_date_iso": "2026-05-15",
   "time_sensitivity": "hard",
   "task_domain": "work",
   "entity_type": "project",
@@ -88,8 +88,8 @@ Return ONLY valid JSON array, no markdown.`;
       received_from: task.received_from || [],
       assigned_to: task.assigned_to || [],
       participants: task.participants || [],
-      due_date: task.due_date || null,
-      due_date_iso: task.due_date_iso || null,
+      due_date: task.due_date || 'today',
+      due_date_iso: task.due_date_iso || new Date().toISOString().split('T')[0],
       time_sensitivity: task.time_sensitivity || 'flexible',
       task_domain: task.task_domain || 'work',
       entity_type: task.entity_type || null,
