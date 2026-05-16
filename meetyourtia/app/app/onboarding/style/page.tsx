@@ -27,7 +27,7 @@ export default function OnboardingStyle() {
     // Store in session storage
     sessionStorage.setItem('onboarding_communication_style', communicationStyle);
     sessionStorage.setItem('onboarding_nudge_frequency', nudgeFrequency);
-    router.push('/app/onboarding/done');
+    router.push('/app/onboarding/people');
   };
 
   return (

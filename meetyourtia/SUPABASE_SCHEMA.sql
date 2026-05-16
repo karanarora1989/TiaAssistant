@@ -58,6 +58,8 @@ CREATE TABLE people (
   id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id         TEXT        NOT NULL,
   name            TEXT        NOT NULL,
+  email           TEXT,
+  phone_number    TEXT,
   role            TEXT,
   relationship    TEXT,
   sensitivity     TEXT        DEFAULT 'normal'
@@ -65,7 +67,6 @@ CREATE TABLE people (
   task_count      INTEGER     DEFAULT 0,
   open_task_count INTEGER     DEFAULT 0,
   last_mentioned  TIMESTAMPTZ,
-  phone_number    TEXT,
   aliases         TEXT[]      DEFAULT '{}',
   created_at      TIMESTAMPTZ DEFAULT now(),
   updated_at      TIMESTAMPTZ DEFAULT now(),
@@ -100,104 +101,49 @@ CREATE TABLE task_history (
   new_value     TEXT,
   reason        TEXT,
   source        TEXT
-    CHECK (source IN ('voice','text','system'))
 );
 
-CREATE TABLE nudges (
-  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     TEXT        NOT NULL,
-  message     TEXT        NOT NULL,
-  nudge_type  TEXT,
-  read        BOOLEAN     DEFAULT false,
-  acted_on    BOOLEAN,
-  created_at  TIMESTAMPTZ DEFAULT now()
+CREATE TABLE subscriptions (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id           TEXT        NOT NULL UNIQUE,
+  plan              TEXT        NOT NULL DEFAULT 'free'
+    CHECK (plan IN ('free','pro')),
+  status            TEXT        NOT NULL DEFAULT 'active'
+    CHECK (status IN ('active','cancelled','expired')),
+  razorpay_subscription_id TEXT,
+  razorpay_customer_id     TEXT,
+  current_period_start     TIMESTAMPTZ,
+  current_period_end       TIMESTAMPTZ,
+  cancel_at_period_end     BOOLEAN DEFAULT false,
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  updated_at        TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TABLE subscription_map (
-  user_id                   TEXT PRIMARY KEY,
-  razorpay_subscription_id  TEXT NOT NULL,
-  plan_type                 TEXT CHECK (plan_type IN ('monthly','annual')),
-  created_at                TIMESTAMPTZ DEFAULT now()
-);
--- No RLS on subscription_map — service role only
+-- ── INDEXES ────────────────────────────────────────────────
 
--- ── INDEXES ─────────────────────────────────────────────────
+CREATE INDEX idx_tasks_user_id ON tasks(user_id);
+CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX idx_tasks_due_date ON tasks(due_date_iso);
+CREATE INDEX idx_tasks_user_status ON tasks(user_id, status);
+CREATE INDEX idx_people_user_id ON people(user_id);
+CREATE INDEX idx_entities_user_id ON entities(user_id);
+CREATE INDEX idx_task_history_task_id ON task_history(task_id);
+CREATE INDEX idx_subscriptions_user_id ON subscriptions(user_id);
 
-CREATE INDEX idx_tasks_user_status
-  ON tasks (user_id, status)
-  WHERE archived = false;
+-- ── ROW LEVEL SECURITY ─────────────────────────────────────
 
-CREATE INDEX idx_tasks_carry_over
-  ON tasks (user_id, carried_over)
-  WHERE status = 'open' AND archived = false;
-
-CREATE INDEX idx_tasks_due_date
-  ON tasks (user_id, due_date_iso)
-  WHERE status = 'open' AND archived = false;
-
-CREATE INDEX idx_tasks_entity
-  ON tasks (user_id, entity_name);
-
-CREATE INDEX idx_tasks_assigned
-  ON tasks USING GIN (assigned_to);
-
-CREATE INDEX idx_tasks_parent
-  ON tasks (parent_task_id);
-
-CREATE INDEX idx_tasks_domain
-  ON tasks (user_id, task_domain, status)
-  WHERE archived = false;
-
-CREATE INDEX idx_people_open
-  ON people (user_id, open_task_count DESC);
-
-CREATE INDEX idx_entities_open
-  ON entities (user_id, open_task_count DESC);
-
-CREATE INDEX idx_history_task
-  ON task_history (task_id, changed_at DESC);
-
-CREATE INDEX idx_history_user
-  ON task_history (user_id, changed_at DESC);
-
-CREATE INDEX idx_nudges_unread
-  ON nudges (user_id, read, created_at DESC);
-
--- ── RLS ─────────────────────────────────────────────────────
-
-ALTER TABLE tasks        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE brain        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE soul         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE people       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE entities     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE brain ENABLE ROW LEVEL SECURITY;
+ALTER TABLE soul ENABLE ROW LEVEL SECURITY;
+ALTER TABLE people ENABLE ROW LEVEL SECURITY;
+ALTER TABLE entities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_history ENABLE ROW LEVEL SECURITY;
-ALTER TABLE nudges       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "tasks_own"
-  ON tasks FOR ALL
-  USING (user_id = auth.uid()::text);
--- NO DELETE POLICY — tasks are permanent records
+-- Note: Policies are managed by service role key in production
+-- For development, you can add policies here if needed
 
-CREATE POLICY "brain_own"
-  ON brain FOR ALL
-  USING (user_id = auth.uid()::text);
+-- ── MIGRATION: Add email column to people table ────────────
 
-CREATE POLICY "soul_own"
-  ON soul FOR ALL
-  USING (user_id = auth.uid()::text);
-
-CREATE POLICY "people_own"
-  ON people FOR ALL
-  USING (user_id = auth.uid()::text);
-
-CREATE POLICY "entities_own"
-  ON entities FOR ALL
-  USING (user_id = auth.uid()::text);
-
-CREATE POLICY "task_history_own"
-  ON task_history FOR ALL
-  USING (user_id = auth.uid()::text);
-
-CREATE POLICY "nudges_own"
-  ON nudges FOR ALL
-  USING (user_id = auth.uid()::text);
+-- Run this if upgrading from previous schema:
+-- ALTER TABLE people ADD COLUMN IF NOT EXISTS email TEXT;
