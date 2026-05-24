@@ -11,9 +11,13 @@ CREATE TABLE tasks (
   title             TEXT        NOT NULL,
   transcript        TEXT,
   context           TEXT,
+  
+  -- Delegation tracking
+  assigned_from     TEXT,       -- Who delegated this task (null for self-tasks)
+  assigned_to       TEXT,       -- Who is responsible (null or "self" for self-tasks)
   received_from     TEXT[]      DEFAULT '{}',
-  assigned_to       TEXT[]      DEFAULT '{}',
   participants      TEXT[]      DEFAULT '{}',
+  
   due_date          TEXT,
   due_date_iso      DATE,
   time_sensitivity  TEXT
@@ -24,9 +28,19 @@ CREATE TABLE tasks (
   entity_name       TEXT,
   priority          TEXT
     CHECK (priority IN ('high','medium','low')),
-  status            TEXT        DEFAULT 'open'
-    CHECK (status IN ('open','done','blocked')),
+  
+  -- Enhanced status tracking
+  status            TEXT        DEFAULT 'not_started'
+    CHECK (status IN ('not_started','wip','blocked','done')),
+  status_details    JSONB       DEFAULT '{}',
   blocked_by        TEXT,
+  
+  -- Autonomous follow-up tracking
+  next_action_date  DATE,
+  last_followup_at  TIMESTAMPTZ,
+  followup_count    INTEGER     DEFAULT 0,
+  needs_intervention BOOLEAN    DEFAULT false,
+  
   parent_task_id    UUID        REFERENCES tasks(id) ON DELETE SET NULL,
   is_private        BOOLEAN     DEFAULT false,
   carried_over      BOOLEAN     DEFAULT false,
