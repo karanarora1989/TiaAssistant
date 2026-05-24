@@ -19,8 +19,10 @@ export async function GET(req: NextRequest) {
       .eq('archived', false)
       .order('created_at', { ascending: false });
 
-    // Filter by status
-    if (status) {
+    // Filter by status (include both 'open' and 'not_started' for active tasks)
+    if (status === 'open') {
+      query = query.in('status', ['open', 'not_started']);
+    } else if (status) {
       query = query.eq('status', status);
     }
 
@@ -47,7 +49,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Priority ranking logic
-    const rankedTasks = tasks.sort((a, b) => {
+    const rankedTasks = tasks.sort((a: any, b: any) => {
       // 1. Carried over tasks first (more days = higher priority)
       const carryDiff = (b.carry_over_count || 0) - (a.carry_over_count || 0);
       if (carryDiff !== 0) return carryDiff;

@@ -17,18 +17,33 @@ export interface Task {
   title: string;
   transcript?: string;
   context?: string;
+  
+  // Delegation fields (updated for autonomous assistant)
+  assigned_from?: string;
+  assigned_to?: string;  // Changed from string[] to string
   received_from?: string[];
-  assigned_to?: string[];
   participants?: string[];
+  
   due_date?: string;
   due_date_iso?: string;
+  due_time?: string;  // NEW: Separate time field
   time_sensitivity?: 'hard' | 'soft' | 'flexible';
   task_domain?: 'work' | 'personal';
   entity_type?: string;
   entity_name?: string;
   priority?: 'high' | 'medium' | 'low';
-  status?: 'open' | 'done' | 'blocked';
+  
+  // Enhanced status (updated for autonomous assistant)
+  status?: 'not_started' | 'wip' | 'blocked' | 'done' | 'open';
+  status_details?: any;
   blocked_by?: string;
+  
+  // Follow-up tracking (new for autonomous assistant)
+  next_action_date?: string;
+  last_followup_at?: string;
+  followup_count?: number;
+  needs_intervention?: boolean;
+  
   parent_task_id?: string;
   is_private?: boolean;
   carried_over?: boolean;

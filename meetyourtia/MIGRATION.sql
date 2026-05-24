@@ -49,6 +49,10 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS needs_intervention BOOLEAN DEFAULT fa
 
 ALTER TABLE people ADD COLUMN IF NOT EXISTS email TEXT;
 
+-- ── STEP 5: Add due_time column to tasks table ────────────────
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS due_time TEXT;
+
 -- ── STEP 3: Create indexes for new columns ────────────────────
 
 CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to ON tasks(assigned_to);

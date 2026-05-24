@@ -36,18 +36,19 @@ ${context}
 Voice note: "${transcript}"
 
 Extract ALL tasks mentioned. For each task, determine:
-1. title - clear task description
+1. title - The actual deliverable/outcome (e.g., "MFR deck to be completed", NOT "Follow up with John")
 2. context - why this task exists
 3. assigned_from - who is delegating this task (the speaker's name from context, or null if self-task)
 4. assigned_to - who does the work (single name). If the user is doing it themselves, use "self". If assigning to someone else, use that person's name.
 5. participants - everyone mentioned (array)
-6. due_date - flexible format ("Monday", "EOD", "next week", or "today" if not specified)
-7. due_date_iso - ALWAYS provide an ISO date (YYYY-MM-DD). If date mentioned, use it. If urgent/ASAP, use today. If no urgency mentioned, use tomorrow. Never leave null.
-8. time_sensitivity - "hard", "soft", or "flexible"
-9. task_domain - "work" or "personal" (infer silently)
-10. entity_type - free text (e.g. "project", "patient", "product")
-11. entity_name - title case (e.g. "Atlas Migration")
-12. priority - "high", "medium", or "low"
+6. due_date - Just the date in friendly format ("Today", "Tomorrow", "Monday", "May 25")
+7. due_time - Separate time if mentioned ("10:00 AM", "3:30 PM", or null if not specified)
+8. due_date_iso - ALWAYS provide an ISO date (YYYY-MM-DD). If date mentioned, use it. If urgent/ASAP, use today. If no urgency mentioned, use tomorrow. Never leave null.
+9. time_sensitivity - "hard", "soft", or "flexible"
+10. task_domain - "work" or "personal" (infer silently)
+11. entity_type - free text (e.g. "project", "patient", "product")
+12. entity_name - title case (e.g. "Atlas Migration")
+13. priority - "high", "medium", or "low"
 
 Return JSON array of tasks:
 [{
@@ -127,7 +128,7 @@ Return ONLY valid JSON array, no markdown.`;
     }
 
     // Insert task history for each task
-    const historyRows = insertedTasks.map(task => ({
+    const historyRows = insertedTasks.map((task: any) => ({
       task_id: task.id,
       user_id: userId,
       change_type: 'created',

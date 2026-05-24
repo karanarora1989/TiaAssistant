@@ -42,18 +42,23 @@ export function TaskCard({ task, onClick, onSwipeRight, onSwipeLeft }: TaskCardP
         <StatusDot color={priorityDot as any} size="sm" />
       </div>
 
-      {/* Meta */}
-      <div className="flex items-center gap-3 text-xs text-text-secondary">
+      {/* Assigned To */}
+      {task.assigned_to && task.assigned_to !== 'self' && (
+        <div className="text-xs text-text-secondary mb-1">
+          {task.assigned_to}
+        </div>
+      )}
+
+      {/* Date and Time */}
+      <div className="flex items-center gap-2 text-xs text-text-secondary">
         {task.due_date && (
           <span>{task.due_date}</span>
         )}
-        {task.entity_name && (
-          <span className={`text-${domainColor}`}>
-            {task.entity_name}
-          </span>
-        )}
-        {task.assigned_to && task.assigned_to.length > 0 && (
-          <span>→ {task.assigned_to.join(', ')}</span>
+        {task.due_time && (
+          <>
+            <span>•</span>
+            <span>{task.due_time}</span>
+          </>
         )}
       </div>
 
