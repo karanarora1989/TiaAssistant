@@ -457,18 +457,6 @@ export default function VoiceCapturePage() {
                     <span className="capitalize">{task.priority || 'medium'}</span>
                   </span>
                 </div>
-                
-                {task.context && (
-                  <p className="text-xs text-text-secondary leading-relaxed">
-                    {task.context}
-                  </p>
-                )}
-                
-                {task.entity_name && (
-                  <p className="text-xs text-gold">
-                    🏢 {task.entity_name}
-                  </p>
-                )}
               </Card>
             ))}
           </div>
