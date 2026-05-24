@@ -38,8 +38,8 @@ Voice note: "${transcript}"
 Extract ALL tasks mentioned. For each task, determine:
 1. title - clear task description
 2. context - why this task exists
-3. received_from - who delegated/gave this task (array of names)
-4. assigned_to - who does the work (array of names). If the user is doing it themselves, use their actual name from context. If assigning to someone else, use that person's name. Never use "self".
+3. assigned_from - who is delegating this task (the speaker's name from context, or null if self-task)
+4. assigned_to - who does the work (single name). If the user is doing it themselves, use "self". If assigning to someone else, use that person's name.
 5. participants - everyone mentioned (array)
 6. due_date - flexible format ("Monday", "EOD", "next week", or "today" if not specified)
 7. due_date_iso - ALWAYS provide an ISO date (YYYY-MM-DD). If date mentioned, use it. If urgent/ASAP, use today. If no urgency mentioned, use tomorrow. Never leave null.
@@ -53,8 +53,8 @@ Return JSON array of tasks:
 [{
   "title": "...",
   "context": "...",
-  "received_from": [],
-  "assigned_to": ["Actual Name"],
+  "assigned_from": "Speaker Name or null",
+  "assigned_to": "Person Name or self",
   "participants": [],
   "due_date": "today",
   "due_date_iso": "2026-05-15",
@@ -85,9 +85,15 @@ Return ONLY valid JSON array, no markdown.`;
       title: task.title,
       transcript,
       context: task.context || null,
+      
+      // Delegation fields (NEW)
+      assigned_from: task.assigned_from || null,
+      assigned_to: task.assigned_to || 'self',
+      
+      // Keep received_from for backward compatibility
       received_from: task.received_from || [],
-      assigned_to: task.assigned_to || [],
       participants: task.participants || [],
+      
       due_date: task.due_date || 'today',
       due_date_iso: task.due_date_iso || new Date().toISOString().split('T')[0],
       time_sensitivity: task.time_sensitivity || 'flexible',
@@ -95,7 +101,16 @@ Return ONLY valid JSON array, no markdown.`;
       entity_type: task.entity_type || null,
       entity_name: task.entity_name || null,
       priority: task.priority || 'medium',
-      status: 'open',
+      
+      // Updated status (NEW)
+      status: 'not_started',
+      status_details: {},
+      
+      // Follow-up fields (NEW)
+      next_action_date: null,
+      followup_count: 0,
+      needs_intervention: false,
+      
       capture_method: captureMethod,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -129,7 +144,7 @@ Return ONLY valid JSON array, no markdown.`;
       .insert(historyRows);
 
     // Update people and entities (async, non-blocking)
-    for (const task of tasks) {
+    for (const task of tasks as any[]) {
       if (task.participants && task.participants.length > 0) {
         for (const person of task.participants) {
           // Upsert person
