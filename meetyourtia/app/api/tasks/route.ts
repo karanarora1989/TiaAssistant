@@ -33,12 +33,14 @@ export async function GET(req: NextRequest) {
 
     // Filter by view
     if (view === 'today') {
+      // Show ONLY tasks due today
       const today = new Date().toISOString().split('T')[0];
-      query = query.lte('due_date_iso', today);
+      query = query.eq('due_date_iso', today);
     } else if (view === 'upcoming') {
-      const today = new Date().toISOString().split('T')[0];
+      // Show tasks from tomorrow to today+5 (inclusive)
+      const tomorrow = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       const fiveDaysLater = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      query = query.gt('due_date_iso', today).lte('due_date_iso', fiveDaysLater);
+      query = query.gte('due_date_iso', tomorrow).lte('due_date_iso', fiveDaysLater);
     }
 
     const { data: tasks, error } = await query;
