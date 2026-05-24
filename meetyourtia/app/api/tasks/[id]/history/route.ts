@@ -5,11 +5,11 @@ import { successResponse, errorResponse } from '@/lib/api-handler';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getAuthUserId();
-    const taskId = params.id;
+    const { id: taskId } = await params;
 
     // Verify task belongs to user
     const { data: task } = await supabaseAdmin
