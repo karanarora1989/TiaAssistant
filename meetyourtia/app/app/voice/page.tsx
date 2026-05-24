@@ -11,7 +11,7 @@ type ProcessingStage = 'transcribing' | 'extracting' | 'identifying' | 'scheduli
 interface ExtractedTask {
   title: string;
   context?: string;
-  assigned_to?: string[];
+  assigned_to?: string;  // Changed from string[] to string
   due_date?: string;
   priority?: string;
   entity_name?: string;
@@ -446,7 +446,7 @@ export default function VoiceCapturePage() {
                 <div className="flex flex-wrap items-center gap-3 text-xs">
                   <span className="flex items-center gap-1 text-text-secondary">
                     <span>👤</span>
-                    <span>{task.assigned_to?.join(', ') || 'Self'}</span>
+                    <span>{task.assigned_to || 'Self'}</span>
                   </span>
                   <span className="flex items-center gap-1 text-text-secondary">
                     <span>📅</span>
