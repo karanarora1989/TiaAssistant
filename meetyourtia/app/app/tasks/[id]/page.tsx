@@ -292,13 +292,13 @@ export default function TaskDetailPage() {
             </Card>
           )}
 
-          {task.assigned_to && task.assigned_to.length > 0 && (
+          {task.assigned_to && task.assigned_to !== 'self' && (
             <Card>
               <h3 className="text-xs text-text-secondary mb-1 uppercase tracking-wider-03">
                 Assigned To
               </h3>
               <p className="text-sm text-text-primary">
-                {task.assigned_to.join(', ')}
+                {task.assigned_to}
               </p>
             </Card>
           )}
