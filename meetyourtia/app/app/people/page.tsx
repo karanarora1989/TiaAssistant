@@ -49,12 +49,23 @@ export default function PeoplePage() {
     <div className="min-h-screen bg-surface-0 pb-24">
       {/* Top Bar */}
       <div className="px-6 py-4 border-b border-border-1">
-        <h1 className="text-[15px] font-medium text-text-primary tracking-tighter-01">
-          People
-        </h1>
-        <p className="text-xs text-text-secondary mt-1">
-          Everyone you've mentioned in tasks
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-[15px] font-medium text-text-primary tracking-tighter-01">
+              People
+            </h1>
+            <p className="text-xs text-text-secondary mt-1">
+              Everyone you've mentioned in tasks
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/app/people/import')}
+            className="px-3 py-1.5 bg-gold-gradient rounded-lg text-xs font-medium text-surface-0 hover:scale-105 transition-smooth flex items-center gap-1"
+          >
+            <span>📇</span>
+            <span>Import</span>
+          </button>
+        </div>
       </div>
 
       {/* Content */}
