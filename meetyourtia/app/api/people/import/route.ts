@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
             user_id: userId,
             name: c.name.trim(),
             email: c.email?.trim() || null,
-            phone: c.phone?.trim() || null,
+            phone_number: c.phone?.trim() || null,
             sensitivity: 'medium',
             created_at: new Date().toISOString(),
           }))
