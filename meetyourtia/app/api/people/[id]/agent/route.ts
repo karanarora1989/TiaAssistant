@@ -9,11 +9,11 @@ import { successResponse, errorResponse } from '@/lib/api-handler';
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getAuthUserId();
-    const personId = params.id;
+    const { id: personId } = await params;
     const body = await req.json();
     
     const { agent_enabled, agent_call, agent_remind, agent_followup } = body;
