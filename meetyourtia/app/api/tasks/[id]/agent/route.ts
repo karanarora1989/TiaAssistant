@@ -22,7 +22,7 @@ export async function PATCH(
     // Get task details
     const { data: task } = await supabaseAdmin
       .from('tasks')
-      .select('*, people!inner(phone_number)')
+      .select('*')
       .eq('id', taskId)
       .eq('user_id', userId)
       .single();
