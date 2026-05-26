@@ -8,7 +8,7 @@
     },
     {
       "path": "/api/jobs/schedule-calls",
-      "schedule": "* * * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }
