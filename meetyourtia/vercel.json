@@ -5,6 +5,10 @@
     {
       "path": "/jobs/carry-over",
       "schedule": "1 0 * * *"
+    },
+    {
+      "path": "/api/jobs/schedule-calls",
+      "schedule": "* * * * *"
     }
   ]
 }
