@@ -311,17 +311,17 @@ export default function TaskDetailPage() {
               <p className="text-xs text-text-secondary mb-1">Priority</p>
               <p className="text-text-primary capitalize">{task.priority}</p>
             </div>
-            {task.assigned_to && task.assigned_to !== 'self' && (
+            {task.assigned_to && (
               <div>
                 <p className="text-xs text-text-secondary mb-1">Assigned To</p>
-                <p className="text-text-primary">{task.assigned_to}</p>
+                <p className="text-text-primary">{task.assigned_to === 'self' ? 'You' : task.assigned_to}</p>
               </div>
             )}
           </div>
         </Card>
 
         {/* Agent Control Section */}
-        {task.assigned_to && task.assigned_to !== 'self' && (
+        {task.assigned_to && (
           <Card className="mb-6">
             <h3 className="text-xs text-text-secondary mb-3 uppercase tracking-wider-03">
               Autonomous Agent

@@ -48,6 +48,7 @@ export default function OnboardingDone() {
           assistantName,
           role,
           people,
+          phoneNumber: sessionStorage.getItem('onboarding_phone_number') || '',
           communicationStyle,
           sensitiveHandling: sessionStorage.getItem('onboarding_sensitive_handling') || '',
           sensitivityLevel: sessionStorage.getItem('onboarding_sensitivity_level') || 'careful',

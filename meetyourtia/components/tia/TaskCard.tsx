@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import { Task } from '@/lib/supabase';
 import { StatusDot } from './shared';
 
@@ -9,6 +12,35 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, onClick, onSwipeRight, onSwipeLeft }: TaskCardProps) {
+  const [agentEnabled, setAgentEnabled] = useState(task.agent_enabled || false);
+  const [loading, setLoading] = useState(false);
+
+  const handleAgentToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    setLoading(true);
+
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/agent`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agent_enabled: !agentEnabled,
+          agent_call: true,
+          agent_remind: true,
+          agent_followup: true,
+        }),
+      });
+
+      if (response.ok) {
+        setAgentEnabled(!agentEnabled);
+      }
+    } catch (error) {
+      console.error('Failed to toggle agent:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Determine carry-over styling
   const carryOverDays = task.carry_over_count || 0;
   let carryOverStyle = '';
@@ -73,6 +105,24 @@ export function TaskCard({ task, onClick, onSwipeRight, onSwipeLeft }: TaskCardP
           Carried {carryOverDays} day{carryOverDays > 1 ? 's' : ''}
         </div>
       )}
+
+      {/* Agent Toggle */}
+      <div className="mt-3 pt-3 border-t border-border-2 flex items-center justify-between">
+        <span className="text-xs text-text-secondary">🤖 Agent</span>
+        <button
+          onClick={handleAgentToggle}
+          disabled={loading}
+          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+            agentEnabled ? 'bg-gold' : 'bg-surface-2 border border-border-1'
+          } ${loading ? 'opacity-50' : ''}`}
+        >
+          <span
+            className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+              agentEnabled ? 'translate-x-5' : 'translate-x-1'
+            }`}
+          />
+        </button>
+      </div>
     </div>
   );
 }

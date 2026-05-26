@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
       assistantName,
       role,
       people = [],
+      phoneNumber,
       communicationStyle,
       sensitiveHandling,
       sensitivityLevel,
@@ -111,13 +112,14 @@ Return ONLY valid JSON, no markdown.`;
         last_updated: new Date().toISOString(),
       });
 
-    // Update Clerk metadata
+    // Update Clerk metadata with phone number
     try {
       const client = await clerkClient();
       await client.users.updateUser(userId, {
         publicMetadata: {
           onboarding_complete: true,
           plan: 'free',
+          phone_number: phoneNumber || null,
         },
       });
     } catch (clerkError: any) {

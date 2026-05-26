@@ -15,6 +15,7 @@ export default function OnboardingWorld() {
     { name: '', role: '' },
     { name: '', role: '' },
   ]);
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [sensitiveHandling, setSensitiveHandling] = useState('');
   const [sensitivityLevel, setSensitivityLevel] = useState<'careful' | 'critical'>('careful');
 
@@ -34,6 +35,7 @@ export default function OnboardingWorld() {
     // Store in session storage
     const filledPeople = people.filter(p => p.name.trim() !== '');
     sessionStorage.setItem('onboarding_people', JSON.stringify(filledPeople));
+    sessionStorage.setItem('onboarding_phone_number', phoneNumber);
     sessionStorage.setItem('onboarding_sensitive_handling', sensitiveHandling);
     sessionStorage.setItem('onboarding_sensitivity_level', sensitivityLevel);
     router.push('/app/onboarding/style');
@@ -87,6 +89,23 @@ export default function OnboardingWorld() {
               <span>Add another person</span>
             </button>
           )}
+        </div>
+
+        {/* Section 1.5: Your Phone Number */}
+        <div className="mb-10">
+          <h2 className="text-[22px] font-light tracking-tighter-02 text-text-primary mb-2">
+            What's your phone number?
+          </h2>
+          <p className="text-[13px] text-[#333] leading-relaxed mb-5">
+            I'll use this to call you with reminders for your tasks.
+          </p>
+          <Input
+            type="tel"
+            placeholder="+1 (555) 123-4567"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            className="w-full"
+          />
         </div>
 
         {/* Section 2: Sensitive Handling */}

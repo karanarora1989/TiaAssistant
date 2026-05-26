@@ -3,6 +3,7 @@ import { getAuthUserId } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { successResponse, errorResponse } from '@/lib/api-handler';
 import { scheduleCall } from '@/lib/call-scheduler';
+import { clerkClient } from '@clerk/nextjs/server';
 
 /**
  * Toggle agent for a specific task
@@ -48,22 +49,39 @@ export async function PATCH(
     }
 
     // If enabling agent and call is enabled, schedule call
-    if (agent_enabled && agent_call && task.assigned_to && task.assigned_to !== 'self') {
-      // Get person's phone number
-      const { data: person } = await supabaseAdmin
-        .from('people')
-        .select('phone_number')
-        .eq('user_id', userId)
-        .eq('name', task.assigned_to)
-        .single();
+    if (agent_enabled && agent_call && task.assigned_to && task.due_date_iso) {
+      let recipientPhone = '';
+      let recipientName = task.assigned_to;
 
-      if (person?.phone_number && task.due_date_iso) {
+      if (task.assigned_to === 'self') {
+        // Get user's phone number from Clerk metadata
+        try {
+          const client = await clerkClient();
+          const user = await client.users.getUser(userId);
+          recipientPhone = user.publicMetadata?.phone_number as string || '';
+          recipientName = user.firstName || 'You';
+        } catch (error) {
+          console.error('Failed to get user phone:', error);
+        }
+      } else {
+        // Get person's phone number
+        const { data: person } = await supabaseAdmin
+          .from('people')
+          .select('phone_number')
+          .eq('user_id', userId)
+          .eq('name', task.assigned_to)
+          .single();
+
+        recipientPhone = person?.phone_number || '';
+      }
+
+      if (recipientPhone) {
         try {
           await scheduleCall({
             taskId: task.id,
             userId: userId,
-            recipientPhone: person.phone_number,
-            recipientName: task.assigned_to
+            recipientPhone: recipientPhone,
+            recipientName: recipientName
           });
         } catch (error) {
           console.error('Failed to schedule call:', error);
