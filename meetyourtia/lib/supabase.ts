@@ -44,6 +44,13 @@ export interface Task {
   followup_count?: number;
   needs_intervention?: boolean;
   
+  // Agent control fields
+  agent_enabled?: boolean;
+  agent_source?: string;
+  agent_call?: boolean;
+  agent_remind?: boolean;
+  agent_followup?: boolean;
+  
   parent_task_id?: string;
   is_private?: boolean;
   carried_over?: boolean;
@@ -82,6 +89,10 @@ export interface Person {
   last_mentioned?: string;
   phone_number?: string;
   aliases?: string[];
+  agent_enabled?: boolean;
+  agent_call?: boolean;
+  agent_remind?: boolean;
+  agent_followup?: boolean;
   created_at?: string;
   updated_at?: string;
 }

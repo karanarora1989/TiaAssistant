@@ -7,6 +7,7 @@ import { enforceFreeTierLimit } from '@/lib/free-tier';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { updateBrain, updatePeopleCounts, updateEntityCounts } from '@/lib/brain-update';
 import { successResponse, errorResponse } from '@/lib/api-handler';
+import { scheduleCall } from '@/lib/call-scheduler';
 
 export async function POST(req: NextRequest) {
   try {
@@ -181,6 +182,47 @@ Return ONLY valid JSON array, no markdown.`;
         
         // Update counts
         updateEntityCounts(userId, task.entity_name).catch(console.error);
+      }
+    }
+
+    // Check agent settings and schedule calls
+    for (const insertedTask of insertedTasks) {
+      try {
+        // Check if task is assigned to someone
+        if (insertedTask.assigned_to && insertedTask.assigned_to !== 'self' && insertedTask.due_date_iso) {
+          // Get person's agent settings
+          const { data: person } = await supabaseAdmin
+            .from('people')
+            .select('agent_enabled, agent_call, phone_number')
+            .eq('user_id', userId)
+            .eq('name', insertedTask.assigned_to)
+            .single();
+
+          if (person?.agent_enabled && person?.agent_call && person?.phone_number) {
+            // Inherit agent settings from person
+            await supabaseAdmin
+              .from('tasks')
+              .update({
+                agent_enabled: true,
+                agent_source: 'person',
+                agent_call: person.agent_call
+              })
+              .eq('id', insertedTask.id);
+
+            // Schedule the call
+            await scheduleCall({
+              taskId: insertedTask.id,
+              userId: userId,
+              recipientPhone: person.phone_number,
+              recipientName: insertedTask.assigned_to
+            });
+
+            console.log(`Agent call scheduled for task ${insertedTask.id} to ${insertedTask.assigned_to}`);
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to schedule call for task ${insertedTask.id}:`, error);
+        // Don't fail the whole request if scheduling fails
       }
     }
 

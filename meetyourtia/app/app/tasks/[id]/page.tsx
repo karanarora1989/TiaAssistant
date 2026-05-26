@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button, TopBar, LoadingSpinner, Card, StatusDot } from '@/components/tia/shared';
 import { Task } from '@/lib/supabase';
+import { AgentControl } from '@/components/tia/AgentControl';
 
 interface TaskHistory {
   id: string;
@@ -318,6 +319,16 @@ export default function TaskDetailPage() {
             )}
           </div>
         </Card>
+
+        {/* Agent Control Section */}
+        {task.assigned_to && task.assigned_to !== 'self' && (
+          <Card className="mb-6">
+            <h3 className="text-xs text-text-secondary mb-3 uppercase tracking-wider-03">
+              Autonomous Agent
+            </h3>
+            <AgentControl taskId={taskId} task={task} onUpdate={fetchTask} />
+          </Card>
+        )}
 
         {/* Voice Update Section */}
         <Card className="mb-6">

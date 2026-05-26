@@ -42,10 +42,15 @@ export function TaskCard({ task, onClick, onSwipeRight, onSwipeLeft }: TaskCardP
         <StatusDot color={priorityDot as any} size="sm" />
       </div>
 
-      {/* Assigned To */}
+      {/* Assigned To & Agent Status */}
       {task.assigned_to && task.assigned_to !== 'self' && (
-        <div className="text-xs text-text-secondary mb-1">
-          {task.assigned_to}
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs text-text-secondary">{task.assigned_to}</span>
+          {task.agent_enabled && (
+            <span className="text-[10px] px-1.5 py-0.5 bg-gold/10 border border-gold/30 rounded text-gold">
+              🤖 Agent
+            </span>
+          )}
         </div>
       )}
 

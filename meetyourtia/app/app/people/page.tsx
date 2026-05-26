@@ -2,17 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { BottomNav, FAB, EmptyState, LoadingSpinner, Card } from '@/components/tia/shared';
-
-interface Person {
-  id: string;
-  name: string;
-  role: string | null;
-  sensitivity: string;
-  task_count: number;
-  open_task_count: number;
-  last_mentioned: string;
-}
+import { BottomNav, FAB, EmptyState, LoadingSpinner } from '@/components/tia/shared';
+import { PersonCard } from '@/components/tia/PersonCard';
+import { Person } from '@/lib/supabase';
 
 export default function PeoplePage() {
   const router = useRouter();
@@ -97,33 +89,11 @@ export default function PeoplePage() {
         {!loading && !error && people.length > 0 && (
           <div className="space-y-3">
             {people.map((person) => (
-              <Card key={person.id} shimmer>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-text-primary mb-1">
-                      {person.name}
-                    </h3>
-                    {person.role && (
-                      <p className="text-xs text-text-secondary mb-2">
-                        {person.role}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-4 text-xs text-text-muted">
-                      <span>{person.open_task_count} open task{person.open_task_count !== 1 ? 's' : ''}</span>
-                      <span>·</span>
-                      <span>{person.task_count} total</span>
-                    </div>
-                  </div>
-                  
-                  {person.sensitivity !== 'normal' && (
-                    <div className="px-2 py-1 bg-gold/10 border border-gold/30 rounded-lg">
-                      <p className="text-[10px] text-gold uppercase tracking-wider-08">
-                        {person.sensitivity}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </Card>
+              <PersonCard 
+                key={person.id} 
+                person={person} 
+                onUpdate={fetchPeople}
+              />
             ))}
           </div>
         )}
