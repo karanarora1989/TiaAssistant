@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button, TopBar, LoadingSpinner, Card, StatusDot } from '@/components/tia/shared';
-import { Task } from '@/lib/supabase';
+import { Task, Person } from '@/lib/supabase';
 import { AgentControl } from '@/components/tia/AgentControl';
+import { PeoplePicker } from '@/components/tia/PeoplePicker';
 
 interface TaskHistory {
   id: string;
@@ -27,6 +28,8 @@ export default function TaskDetailPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
+  const [people, setPeople] = useState<Person[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
   
   // Voice update states
   const [isRecording, setIsRecording] = useState(false);
@@ -42,7 +45,16 @@ export default function TaskDetailPage() {
   useEffect(() => {
     fetchTask();
     fetchHistory();
+    fetchPeople();
   }, [taskId]);
+
+  const fetchPeople = async () => {
+    try {
+      const res = await fetch('/api/people');
+      const data = await res.json();
+      if (res.ok) setPeople(data.data?.people || []);
+    } catch {}
+  };
 
   const fetchTask = async () => {
     setLoading(true);
@@ -301,8 +313,9 @@ export default function TaskDetailPage() {
         </div>
 
         {/* Meta */}
-        <Card className="mb-6">
-          <div className="grid grid-cols-2 gap-4 text-sm">
+        <Card className="mb-6 divide-y divide-border-2">
+          {/* Due Date + Priority */}
+          <div className="grid grid-cols-2 gap-4 text-sm pb-4">
             <div>
               <p className="text-xs text-text-secondary mb-1">Due Date</p>
               <p className="text-text-primary">{task.due_date || 'No deadline'}</p>
@@ -311,14 +324,89 @@ export default function TaskDetailPage() {
               <p className="text-xs text-text-secondary mb-1">Priority</p>
               <p className="text-text-primary capitalize">{task.priority}</p>
             </div>
-            {task.assigned_to && (
-              <div>
-                <p className="text-xs text-text-secondary mb-1">Assigned To</p>
-                <p className="text-text-primary">{task.assigned_to === 'self' ? 'You' : task.assigned_to}</p>
+          </div>
+
+          {/* Created by */}
+          <div className="text-sm py-4">
+            <p className="text-xs text-text-secondary mb-1">Created by</p>
+            <p className="text-text-primary">You</p>
+          </div>
+
+          {/* Owner */}
+          {task.assigned_to && (
+            <div className="text-sm py-4">
+              <p className="text-xs text-text-secondary mb-1">Owner</p>
+              <p className="text-text-primary">
+                {task.assigned_to === 'self' ? 'You' : task.assigned_to}
+              </p>
+            </div>
+          )}
+
+          {/* Received From */}
+          <div className="text-sm pt-4">
+            <p className="text-xs text-text-secondary mb-1">Received From</p>
+            {task.received_from ? (
+              <div className="flex items-center justify-between">
+                {(() => {
+                  const match = people.find(
+                    p => p.name.toLowerCase() === task.received_from!.toLowerCase()
+                  );
+                  return match ? (
+                    <button
+                      onClick={() => router.push(`/app/people/${match.id}`)}
+                      className="text-sm text-gold hover:text-gold-light transition-smooth"
+                    >
+                      {task.received_from}
+                    </button>
+                  ) : (
+                    <span className="text-sm text-text-primary">{task.received_from}</span>
+                  );
+                })()}
+                <button
+                  onClick={() => setPickerOpen(true)}
+                  className="text-text-ghost text-sm hover:text-text-muted transition-smooth ml-2"
+                >
+                  ›
+                </button>
               </div>
+            ) : (
+              <button
+                onClick={() => setPickerOpen(true)}
+                className="text-xs text-text-muted hover:text-text-secondary transition-smooth"
+              >
+                + Add received from
+              </button>
             )}
           </div>
         </Card>
+
+        {/* People Picker */}
+        <PeoplePicker
+          isOpen={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          title="Received From"
+          currentValue={task.received_from}
+          people={people}
+          onSelect={async (name) => {
+            setPickerOpen(false);
+            await fetch(`/api/tasks/${taskId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ received_from: name }),
+            });
+            await fetchTask();
+            await fetchPeople(); // refresh so link resolves immediately (CTO OBS-003)
+          }}
+          onClear={async () => {
+            setPickerOpen(false);
+            await fetch(`/api/tasks/${taskId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ received_from: null }),
+            });
+            fetchTask();
+          }}
+        />
 
         {/* Agent Control Section */}
         {task.assigned_to && (

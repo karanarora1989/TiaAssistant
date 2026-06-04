@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, TopBar, LoadingSpinner, Card } from '@/components/tia/shared';
+import { Person } from '@/lib/supabase';
+import { UnresolvedPersonBanner } from '@/components/tia/UnresolvedPersonBanner';
 
 const MAX_DURATION = 300; // 5 minutes
 
@@ -11,7 +13,8 @@ type ProcessingStage = 'transcribing' | 'extracting' | 'identifying' | 'scheduli
 interface ExtractedTask {
   title: string;
   context?: string;
-  assigned_to?: string;  // Changed from string[] to string
+  assigned_to?: string;
+  received_from?: string;
   due_date?: string;
   priority?: string;
   entity_name?: string;
@@ -30,6 +33,8 @@ export default function VoiceCapturePage() {
   const [audioLevel, setAudioLevel] = useState(0);
   const [extractedTasks, setExtractedTasks] = useState<ExtractedTask[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [unresolvedNames, setUnresolvedNames] = useState<Set<string>>(new Set());
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -45,6 +50,14 @@ export default function VoiceCapturePage() {
     scheduling: { icon: '📅', text: 'Setting due dates...', progress: 90 },
     done: { icon: '✅', text: 'All done! Review your tasks', progress: 100 },
   };
+
+  // Pre-fetch people for unresolved name resolution
+  useEffect(() => {
+    fetch('/api/people')
+      .then(r => r.json())
+      .then(d => setPeople(d.data?.people || []))
+      .catch(() => {});
+  }, []);
 
   // Duration timer
   useEffect(() => {
@@ -278,7 +291,19 @@ export default function VoiceCapturePage() {
       await delay(300);
 
       // Show preview
-      setExtractedTasks(data.data.tasks || []);
+      const tasks = data.data.tasks || [];
+      setExtractedTasks(tasks);
+
+      // Compute unresolved received_from names
+      const peopleNames = new Set(people.map((p: Person) => p.name.toLowerCase()));
+      const unresolved = new Set<string>();
+      tasks.forEach((t: ExtractedTask) => {
+        if (t.received_from && !peopleNames.has(t.received_from.toLowerCase())) {
+          unresolved.add(t.received_from);
+        }
+      });
+      setUnresolvedNames(unresolved);
+
       setShowPreview(true);
       setIsProcessing(false);
 
@@ -437,27 +462,50 @@ export default function VoiceCapturePage() {
             </h3>
             
             {extractedTasks.map((task, i) => (
-              <Card key={i} className="space-y-3">
-                <h4 className="text-sm font-medium text-text-primary flex items-start gap-2">
-                  <span>📌</span>
-                  <span className="flex-1">{task.title}</span>
-                </h4>
-                
-                <div className="flex flex-wrap items-center gap-3 text-xs">
-                  <span className="flex items-center gap-1 text-text-secondary">
-                    <span>👤</span>
-                    <span>{task.assigned_to || 'Self'}</span>
-                  </span>
-                  <span className="flex items-center gap-1 text-text-secondary">
-                    <span>📅</span>
-                    <span>{task.due_date || 'No deadline'}</span>
-                  </span>
-                  <span className="flex items-center gap-1 text-text-secondary">
-                    <span>🔥</span>
-                    <span className="capitalize">{task.priority || 'medium'}</span>
-                  </span>
-                </div>
-              </Card>
+              <div key={i}>
+                <Card className="space-y-3">
+                  <h4 className="text-sm font-medium text-text-primary flex items-start gap-2">
+                    <span>📌</span>
+                    <span className="flex-1">{task.title}</span>
+                  </h4>
+
+                  <div className="flex flex-wrap items-center gap-3 text-xs">
+                    <span className="flex items-center gap-1 text-text-secondary">
+                      <span>👤</span>
+                      <span>
+                        {task.assigned_to && task.assigned_to !== 'self' ? task.assigned_to : 'You'}
+                        {task.received_from && (
+                          <span className="text-text-muted"> · from {task.received_from}</span>
+                        )}
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-1 text-text-secondary">
+                      <span>📅</span>
+                      <span>{task.due_date || 'No deadline'}</span>
+                    </span>
+                    <span className="flex items-center gap-1 text-text-secondary">
+                      <span>🔥</span>
+                      <span className="capitalize">{task.priority || 'medium'}</span>
+                    </span>
+                  </div>
+                </Card>
+
+                {task.received_from && unresolvedNames.has(task.received_from) && (
+                  <UnresolvedPersonBanner
+                    name={task.received_from}
+                    onResolved={() => setUnresolvedNames(prev => {
+                      const next = new Set(prev);
+                      next.delete(task.received_from!);
+                      return next;
+                    })}
+                    onSkip={() => setUnresolvedNames(prev => {
+                      const next = new Set(prev);
+                      next.delete(task.received_from!);
+                      return next;
+                    })}
+                  />
+                )}
+              </div>
             ))}
           </div>
         )}

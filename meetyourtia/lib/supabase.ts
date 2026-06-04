@@ -18,10 +18,9 @@ export interface Task {
   transcript?: string;
   context?: string;
   
-  // Delegation fields (updated for autonomous assistant)
-  assigned_from?: string;
-  assigned_to?: string;  // Changed from string[] to string
-  received_from?: string[];
+  // Delegation fields
+  assigned_to?: string;
+  received_from?: string;  // Consolidated from assigned_from + received_from[] — single delegator name
   participants?: string[];
   
   due_date?: string;

@@ -74,10 +74,18 @@ export function TaskCard({ task, onClick, onSwipeRight, onSwipeLeft }: TaskCardP
         <StatusDot color={priorityDot as any} size="sm" />
       </div>
 
-      {/* Assigned To & Agent Status */}
-      {task.assigned_to && task.assigned_to !== 'self' && (
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs text-text-secondary">{task.assigned_to}</span>
+      {/* Owner + Received From (inline) */}
+      {((task.assigned_to && task.assigned_to !== 'self') || task.received_from) && (
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <span className="text-xs text-text-secondary">
+            {task.assigned_to && task.assigned_to !== 'self' ? task.assigned_to : 'You'}
+          </span>
+          {task.received_from && (
+            <>
+              <span className="text-xs text-text-ghost">·</span>
+              <span className="text-xs text-text-muted">from {task.received_from}</span>
+            </>
+          )}
           {task.agent_enabled && (
             <span className="text-[10px] px-1.5 py-0.5 bg-gold/10 border border-gold/30 rounded text-gold">
               🤖 Agent

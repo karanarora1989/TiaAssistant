@@ -39,7 +39,10 @@ Voice note: "${transcript}"
 Extract ALL tasks mentioned. For each task, determine:
 1. title - The actual deliverable/outcome (e.g., "MFR deck to be completed", NOT "Follow up with John")
 2. context - why this task exists
-3. assigned_from - who is delegating this task (the speaker's name from context, or null if self-task)
+3. received_from - if someone delegated this task to the speaker, their single name (string).
+   Look for patterns like: "X asked me to", "per X", "X wants me to", "from X", "X told me to",
+   "X needs me to", "X requested that I". Use null if self-initiated.
+   This is NOT the same as assigned_to — received_from is who gave the task, assigned_to is who does it.
 4. assigned_to - who does the work (single name). If the user is doing it themselves, use "self". If assigning to someone else, use that person's name.
 5. participants - everyone mentioned (array)
 6. due_date - Just the date in friendly format ("Today", "Tomorrow", "Monday", "May 25")
@@ -55,7 +58,7 @@ Return JSON array of tasks:
 [{
   "title": "...",
   "context": "...",
-  "assigned_from": "Speaker Name or null",
+  "received_from": "Person Name or null",
   "assigned_to": "Person Name or self",
   "participants": [],
   "due_date": "today",
@@ -88,12 +91,8 @@ Return ONLY valid JSON array, no markdown.`;
       transcript,
       context: task.context || null,
       
-      // Delegation fields (NEW)
-      assigned_from: task.assigned_from || null,
       assigned_to: task.assigned_to || 'self',
-      
-      // Keep received_from for backward compatibility
-      received_from: task.received_from || [],
+      received_from: task.received_from || null,
       participants: task.participants || [],
       
       due_date: task.due_date || 'today',

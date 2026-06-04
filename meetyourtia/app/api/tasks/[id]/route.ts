@@ -49,6 +49,7 @@ export async function PATCH(
       assigned_to,
       priority,
       blocked_by,
+      received_from,
     } = body;
 
     // Get current task
@@ -76,6 +77,7 @@ export async function PATCH(
     if (assigned_to !== undefined) updates.assigned_to = assigned_to;
     if (priority !== undefined) updates.priority = priority;
     if (blocked_by !== undefined) updates.blocked_by = blocked_by;
+    if (received_from !== undefined) updates.received_from = received_from; // null clears it
 
     // Update task
     const { data: updatedTask, error: updateError } = await supabaseAdmin
