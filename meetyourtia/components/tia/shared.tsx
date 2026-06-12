@@ -269,17 +269,22 @@ export function TopBar({ title, backLabel, onBack, rightAction }: TopBarProps) {
 }
 
 interface BottomNavProps {
-  active: 'home' | 'tasks' | 'people';
+  pathname: string;
   onNavigate: (tab: 'home' | 'tasks' | 'people') => void;
 }
 
-export function BottomNav({ active, onNavigate }: BottomNavProps) {
+export function BottomNav({ pathname, onNavigate }: BottomNavProps) {
+  const active = pathname.startsWith('/app/people') ? 'people'
+    : pathname.startsWith('/app/tasks') ? 'tasks'
+    : pathname.startsWith('/app/chat') ? 'chat'
+    : 'home';
+
   const items = [
     { id: 'home' as const, label: 'Home', icon: '🏠' },
     { id: 'tasks' as const, label: 'Tasks', icon: '✓' },
     { id: 'people' as const, label: 'People', icon: '👥' },
   ];
-  
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-surface-0 border-t border-border-1 pb-5">
       <div className="flex items-center justify-around px-6 pt-3">
@@ -287,7 +292,7 @@ export function BottomNav({ active, onNavigate }: BottomNavProps) {
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
-            className="flex flex-col items-center gap-1 transition-smooth"
+            className="flex flex-col items-center gap-1 transition-smooth active:scale-95 active:opacity-70"
           >
             <div className="relative">
               {active === item.id && (

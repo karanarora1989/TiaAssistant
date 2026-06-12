@@ -47,7 +47,7 @@ Extract ALL tasks mentioned. For each task, determine:
 5. participants - everyone mentioned (array)
 6. due_date - Just the date in friendly format ("Today", "Tomorrow", "Monday", "May 25")
 7. due_time - Separate time if mentioned ("10:00 AM", "3:30 PM", or null if not specified)
-8. due_date_iso - ALWAYS provide an ISO date (YYYY-MM-DD). If date mentioned, use it. If urgent/ASAP, use today. If no urgency mentioned, use tomorrow. Never leave null.
+8. due_date_iso - ALWAYS provide an ISO date (YYYY-MM-DD). If date mentioned, use it. If urgent/ASAP or no date mentioned, use today. Never leave null.
 9. time_sensitivity - "hard", "soft", or "flexible"
 10. task_domain - "work" or "personal" (infer silently)
 11. entity_type - free text (e.g. "project", "patient", "product")

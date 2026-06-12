@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, TopBar, LoadingSpinner, Card } from '@/components/tia/shared';
+
+type ImportError = null | 'not_supported' | 'permission_denied' | 'generic';
 
 interface Contact {
   name: string;
@@ -14,7 +16,9 @@ export default function ImportContactsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [importError, setImportError] = useState<ImportError>(null);
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
+  const manualEntryRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [manualInput, setManualInput] = useState('');
   
@@ -57,13 +61,19 @@ export default function ImportContactsPage() {
 
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        // User cancelled
         setLoading(false);
         return;
       }
       console.error('Contact import error:', err);
-      setError('Failed to import contacts. Please try again.');
+      if (err.name === 'NotSupportedError' || err.name === 'TypeError') {
+        setImportError('not_supported');
+      } else if (err.name === 'SecurityError' || err.name === 'NotAllowedError') {
+        setImportError('permission_denied');
+      } else {
+        setImportError('generic');
+      }
       setLoading(false);
+      setTimeout(() => manualEntryRef.current?.scrollIntoView({ behavior: 'smooth' }), 150);
     }
   };
 
@@ -263,7 +273,34 @@ export default function ImportContactsPage() {
           </Card>
         )}
 
+        {/* Contextual import error banner */}
+        {importError && (
+          <div className="mb-4 p-4 bg-gold/5 border border-gold/20 rounded-xl">
+            {importError === 'not_supported' && (
+              <p className="text-sm text-text-secondary">
+                ⚠️ Your browser doesn&apos;t support contact import. Enter names manually below. ↓
+              </p>
+            )}
+            {importError === 'permission_denied' && (
+              <div>
+                <p className="text-sm text-text-secondary mb-1">
+                  🔒 Contacts access was denied.
+                </p>
+                <p className="text-xs text-text-muted">
+                  To allow it: Settings → Browser → Contacts → Allow. Or enter names manually below. ↓
+                </p>
+              </div>
+            )}
+            {importError === 'generic' && (
+              <p className="text-sm text-text-secondary">
+                Contact import failed. Enter names manually below. ↓
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Manual Entry (both mobile and desktop) */}
+        <div ref={manualEntryRef}>
         <Card>
           <h3 className="text-xs text-text-secondary mb-3 uppercase tracking-wider-03">
             {isContactsAPIAvailable ? 'Or add manually' : 'Add People'}
@@ -288,6 +325,8 @@ export default function ImportContactsPage() {
             Add People
           </Button>
         </Card>
+
+        </div>{/* end manualEntryRef */}
 
         {/* Error */}
         {error && (

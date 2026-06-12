@@ -2,6 +2,30 @@
 > APPEND-ONLY. Do not remove entries. Mark outdated tests as [DEPRECATED] but keep them.
 
 ---
+## Added in v1.1 — Bug Fix + UX Polish Sprint v1 — 2026-06-13
+
+### REG-011: After capture confirm → app navigates to ?view=upcoming
+- Confirm tasks → URL is /app/tasks?view=upcoming → new tasks visible
+
+### REG-012: /app/tasks?view=upcoming loads with upcoming chip selected
+- Hard-nav to URL → "Next 5 days" chip is active on load
+
+### REG-013: /app/tasks (no param) loads with today chip selected
+- Default behavior unchanged
+
+### REG-014: Import NotSupportedError → banner + auto-scroll to manual entry
+- contacts.select() throws NotSupportedError → correct banner + scroll
+
+### REG-015: Import AbortError (user cancel) → no error shown
+- User cancels picker → UI resets silently
+
+### REG-016: BottomNav active tab matches URL on every page
+- /app → home, /app/tasks → tasks, /app/people → people; all correct on load
+
+### REG-017: NavProgress gold bar appears on navigation, not on initial load
+- Navigate between pages → bar flashes; hard-refresh → no bar
+
+---
 ## Added in v1.0 — Received From (Task Delegation Source) — 2026-06-04
 
 ### REG-001: Voice capture with delegation language sets received_from

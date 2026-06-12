@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { BottomNav, FAB, EmptyState, LoadingSpinner } from '@/components/tia/shared';
 import { PersonCard } from '@/components/tia/PersonCard';
 import { Person } from '@/lib/supabase';
 
 export default function PeoplePage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'home' | 'tasks' | 'people'>('people');
+  const pathname = usePathname();
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -104,9 +104,8 @@ export default function PeoplePage() {
 
       {/* Bottom Navigation */}
       <BottomNav
-        active={activeTab}
+        pathname={pathname}
         onNavigate={(tab) => {
-          setActiveTab(tab);
           if (tab === 'home') router.push('/app');
           if (tab === 'tasks') router.push('/app/tasks');
         }}

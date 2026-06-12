@@ -1,15 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { BottomNav, FAB, EmptyState, LoadingSpinner, Chip } from '@/components/tia/shared';
 import { TaskCard } from '@/components/tia/TaskCard';
 import { Task } from '@/lib/supabase';
 
 export default function TasksPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'home' | 'tasks' | 'people'>('tasks');
-  const [view, setView] = useState<'today' | 'upcoming'>('today');
+  const pathname = usePathname();
+  const [view, setView] = useState<'today' | 'upcoming'>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('view');
+      if (p === 'upcoming') return 'upcoming';
+    }
+    return 'today';
+  });
   const [domain, setDomain] = useState<'all' | 'work' | 'personal'>('all');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,9 +147,8 @@ export default function TasksPage() {
 
       {/* Bottom Navigation */}
       <BottomNav
-        active={activeTab}
+        pathname={pathname}
         onNavigate={(tab) => {
-          setActiveTab(tab);
           if (tab === 'home') router.push('/app');
           if (tab === 'people') router.push('/app/people');
         }}

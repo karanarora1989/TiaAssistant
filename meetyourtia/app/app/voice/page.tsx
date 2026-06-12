@@ -314,7 +314,7 @@ export default function VoiceCapturePage() {
   };
 
   const confirmTasks = () => {
-    router.push('/app/tasks');
+    router.push('/app/tasks?view=upcoming');
   };
 
   return (

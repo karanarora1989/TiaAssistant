@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { BottomNav, FAB, EmptyState, Card } from '@/components/tia/shared';
 
 export default function HomePage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'home' | 'tasks' | 'people'>('home');
+  const pathname = usePathname();
 
   return (
     <div className="min-h-screen bg-surface-0 pb-24">
@@ -53,9 +53,8 @@ export default function HomePage() {
 
       {/* Bottom Navigation */}
       <BottomNav
-        active={activeTab}
+        pathname={pathname}
         onNavigate={(tab) => {
-          setActiveTab(tab);
           if (tab === 'tasks') router.push('/app/tasks');
           if (tab === 'people') router.push('/app/people');
         }}
