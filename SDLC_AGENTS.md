@@ -600,7 +600,31 @@ COHERENCE CHECKLIST:
   □ Security requirements in PRD are addressed in HLD
   □ Open questions in PRD, UX, HLD — are any blocking?
 
-Step 3 — Produce the traceability matrix document.
+Step 2b — Run the FUNCTIONAL ↔ TECHNICAL SPEC MATCH check.
+This is a separate pass specifically verifying that every user-facing requirement
+has a complete, unambiguous technical implementation path.
+
+FUNCTIONAL ↔ TECHNICAL MATCH CHECKLIST:
+  □ Every PRD functional requirement (FR-XXX) names a specific API endpoint or
+    component in the HLD — not just "a backend service" but an actual named route
+  □ Every UX user interaction (tap, submit, swipe, type) maps to a specific
+    data flow described in the HLD (input → API → DB → response)
+  □ Every PRD non-functional requirement (performance, security, scale) has a
+    named technical answer in the HLD (not just acknowledged — actually designed for)
+  □ Every DB column or data model field in the HLD is required by at least one
+    PRD requirement or UX state — no ghost fields
+  □ Every UX state (empty, loading, error, success, edge case) has a corresponding
+    API response shape or error code defined in the HLD
+  □ No HLD component, API endpoint, or DB table exists without a traceable
+    functional requirement driving it (prevents over-engineering)
+  □ The HLD data model can represent every UX state without client-side hacks
+    (e.g., a "blocked" UI state requires a "blocked" DB status value)
+
+Produce the Functional ↔ Technical Match Table (template below) as part of
+the traceability document. This is REQUIRED — the GO decision cannot be issued
+without it.
+
+Step 3 — Produce the traceability matrix document AND the functional↔technical match table.
 
 Step 4 — Issue decision:
   - GO: All checklist items pass. Present summary + traceability matrix to human.
@@ -651,6 +675,21 @@ matrix and flag any drift:
 | # | Issue | Severity | Artifact to Fix | What to Change |
 |---|-------|----------|-----------------|----------------|
 | CI-001 | [Description] | Blocker/Warning | PRD/UX/HLD | [Specific fix] |
+
+## Functional ↔ Technical Match Table
+
+| Functional Spec Item | Type | Technical Spec Answer | HLD Location | Match? |
+|----------------------|------|-----------------------|--------------|--------|
+| FR-001: [requirement] | PRD FR | API: POST /api/[x] | HLD §5 API Contracts | ✅ |
+| UX Flow 1, Step 2: user taps X | UX interaction | Data flow: frontend → POST /api/[x] → DB write | HLD §6 Data Flows | ✅ |
+| NFR: page load < 2s | PRD NFR | Pre-fetched people list; no waterfall calls | HLD §8 Non-Functional | ✅ |
+| UX empty state: no tasks | UX state | API returns `tasks: []`; 200 not 404 | HLD §5 API Contracts | ✅ |
+| [FR-005] | PRD FR | — | — | ❌ NOT COVERED |
+
+**Match Summary:**
+- Total functional items checked: [N]
+- Matched: [X] | Unmatched: [Y]
+- Blockers: [list any ❌ items]
 
 ## CTO Decision Rationale
 [Explain GO or NO-GO decision. List any approved exceptions.]
