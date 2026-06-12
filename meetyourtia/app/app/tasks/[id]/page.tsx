@@ -7,6 +7,43 @@ import { Task, Person } from '@/lib/supabase';
 import { AgentControl } from '@/components/tia/AgentControl';
 import { PeoplePicker } from '@/components/tia/PeoplePicker';
 
+function CallNowButton({ taskId }: { taskId: string }) {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const trigger = async () => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/call-now`, { method: 'POST' });
+      const data = await res.json();
+      setResult({ ok: res.ok, message: res.ok ? data.message : (data.error || 'Failed') });
+    } catch {
+      setResult({ ok: false, message: 'Network error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border-2">
+      <button
+        onClick={trigger}
+        disabled={loading}
+        className="text-xs text-gold hover:text-gold-light transition-smooth flex items-center gap-1 disabled:opacity-50"
+      >
+        {loading ? <LoadingSpinner size="sm" /> : '📞'}
+        {loading ? 'Triggering call...' : 'Trigger call now'}
+      </button>
+      {result && (
+        <p className={`text-xs mt-1 ${result.ok ? 'text-done-green' : 'text-overdue-red'}`}>
+          {result.message}
+        </p>
+      )}
+    </div>
+  );
+}
+
 interface TaskHistory {
   id: string;
   change_type: string;
@@ -415,6 +452,9 @@ export default function TaskDetailPage() {
               Autonomous Agent
             </h3>
             <AgentControl taskId={taskId} task={task} onUpdate={fetchTask} />
+            {task.agent_enabled && (
+              <CallNowButton taskId={taskId} />
+            )}
           </Card>
         )}
 

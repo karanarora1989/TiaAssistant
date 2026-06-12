@@ -49,22 +49,25 @@ export async function PATCH(
     }
 
     // If enabling agent and call is enabled, schedule call
+    let callScheduled = false;
+    let callReason = '';
+
     if (agent_enabled && agent_call && task.assigned_to && task.due_date_iso) {
       let recipientPhone = '';
       let recipientName = task.assigned_to;
 
       if (task.assigned_to === 'self') {
-        // Get user's phone number from Clerk metadata
         try {
           const client = await clerkClient();
           const user = await client.users.getUser(userId);
           recipientPhone = user.publicMetadata?.phone_number as string || '';
           recipientName = user.firstName || 'You';
+          if (!recipientPhone) callReason = 'No phone number on your profile';
         } catch (error) {
           console.error('Failed to get user phone:', error);
+          callReason = 'Could not retrieve your phone number';
         }
       } else {
-        // Get person's phone number
         const { data: person } = await supabaseAdmin
           .from('people')
           .select('phone_number')
@@ -73,6 +76,7 @@ export async function PATCH(
           .single();
 
         recipientPhone = person?.phone_number || '';
+        if (!recipientPhone) callReason = `No phone number saved for ${task.assigned_to}`;
       }
 
       if (recipientPhone) {
@@ -83,15 +87,22 @@ export async function PATCH(
             recipientPhone: recipientPhone,
             recipientName: recipientName
           });
-        } catch (error) {
+          callScheduled = true;
+        } catch (error: any) {
           console.error('Failed to schedule call:', error);
-          // Don't fail the request if scheduling fails
+          callReason = error.message || 'Call scheduling failed';
         }
       }
+    } else if (agent_enabled && agent_call && !task.assigned_to) {
+      callReason = 'Task has no assignee';
+    } else if (agent_enabled && agent_call && !task.due_date_iso) {
+      callReason = 'Task has no due date';
     }
 
-    return successResponse({ 
+    return successResponse({
       agent_enabled,
+      call_scheduled: callScheduled,
+      call_reason: callReason || null,
       message: agent_enabled ? 'Agent enabled for this task' : 'Agent disabled for this task'
     });
 

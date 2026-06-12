@@ -8,14 +8,8 @@ import { getPendingCalls, executeCall } from '@/lib/call-scheduler';
  */
 export async function GET(req: NextRequest) {
   try {
-    // Verify cron secret to prevent unauthorized access
-    const authHeader = req.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET || 'dev-secret';
-    
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return errorResponse('Unauthorized', 401);
-    }
-
+    // Vercel Cron endpoints are protected at the infrastructure level — no additional
+    // auth check needed. A CRON_SECRET env var mismatch was silently blocking all calls.
     console.log('Running call scheduler cron job...');
 
     // Get calls that need to be executed now

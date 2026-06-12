@@ -106,6 +106,19 @@ export async function executeCall(callId: string) {
 
     const voiceName = soul?.tia_voice_name || 'Maya';
     
+    // Validate required env vars before attempting the call
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    const blandApiKey = process.env.BLAND_API_KEY;
+    if (!appUrl || !blandApiKey) {
+      const missing = [!appUrl && 'NEXT_PUBLIC_APP_URL', !blandApiKey && 'BLAND_API_KEY']
+        .filter(Boolean).join(', ');
+      await supabaseAdmin.from('ai_calls').update({
+        status: 'failed',
+        completed_at: new Date().toISOString()
+      }).eq('id', callId);
+      throw new Error(`Missing required env vars: ${missing}`);
+    }
+
     // Build prompt based on call type
     let prompt = '';
     const task = call.tasks;

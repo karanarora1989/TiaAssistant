@@ -13,6 +13,7 @@ interface AgentControlProps {
 export function AgentControl({ taskId, task, onUpdate }: AgentControlProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [callStatus, setCallStatus] = useState<{ scheduled: boolean; reason: string | null } | null>(null);
   const [agentEnabled, setAgentEnabled] = useState(task.agent_enabled || false);
   const [agentCall, setAgentCall] = useState(task.agent_call ?? true);
   const [agentRemind, setAgentRemind] = useState(task.agent_remind ?? true);
@@ -41,6 +42,14 @@ export function AgentControl({ taskId, task, onUpdate }: AgentControlProps) {
       }
 
       setAgentEnabled(enabled);
+      if (enabled) {
+        setCallStatus({
+          scheduled: data.data?.call_scheduled ?? false,
+          reason: data.data?.call_reason ?? null,
+        });
+      } else {
+        setCallStatus(null);
+      }
       onUpdate();
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
@@ -180,8 +189,32 @@ export function AgentControl({ taskId, task, onUpdate }: AgentControlProps) {
         </div>
       )}
 
-      {/* Agent Status */}
-      {agentEnabled && (
+      {/* Agent / Call Status */}
+      {agentEnabled && callStatus && (
+        callStatus.scheduled ? (
+          <div className="p-3 bg-done-green/10 border border-done-green/30 rounded-lg">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">📞</span>
+              <p className="text-xs text-done-green">
+                Call scheduled for {task.assigned_to}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="p-3 bg-gold/10 border border-gold/30 rounded-lg">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">⚠️</span>
+              <div>
+                <p className="text-xs text-gold font-medium">Agent enabled, but call not scheduled</p>
+                {callStatus.reason && (
+                  <p className="text-xs text-text-secondary mt-0.5">{callStatus.reason}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      )}
+      {agentEnabled && !callStatus && (
         <div className="p-3 bg-done-green/10 border border-done-green/30 rounded-lg">
           <div className="flex items-center gap-2">
             <span className="text-sm">✓</span>
