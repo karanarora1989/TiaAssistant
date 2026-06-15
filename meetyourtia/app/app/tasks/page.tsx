@@ -151,6 +151,7 @@ export default function TasksPage() {
         onNavigate={(tab) => {
           if (tab === 'home') router.push('/app');
           if (tab === 'people') router.push('/app/people');
+          if (tab === 'chat') router.push('/app/chat');
         }}
       />
     </div>

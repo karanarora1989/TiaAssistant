@@ -270,7 +270,7 @@ export function TopBar({ title, backLabel, onBack, rightAction }: TopBarProps) {
 
 interface BottomNavProps {
   pathname: string;
-  onNavigate: (tab: 'home' | 'tasks' | 'people') => void;
+  onNavigate: (tab: 'home' | 'tasks' | 'people' | 'chat') => void;
 }
 
 export function BottomNav({ pathname, onNavigate }: BottomNavProps) {
@@ -283,6 +283,7 @@ export function BottomNav({ pathname, onNavigate }: BottomNavProps) {
     { id: 'home' as const, label: 'Home', icon: '🏠' },
     { id: 'tasks' as const, label: 'Tasks', icon: '✓' },
     { id: 'people' as const, label: 'People', icon: '👥' },
+    { id: 'chat' as const, label: 'Chat', icon: '💬' },
   ];
 
   return (

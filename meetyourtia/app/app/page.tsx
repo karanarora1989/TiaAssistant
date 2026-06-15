@@ -57,6 +57,7 @@ export default function HomePage() {
         onNavigate={(tab) => {
           if (tab === 'tasks') router.push('/app/tasks');
           if (tab === 'people') router.push('/app/people');
+          if (tab === 'chat') router.push('/app/chat');
         }}
       />
     </div>

@@ -108,6 +108,7 @@ export default function PeoplePage() {
         onNavigate={(tab) => {
           if (tab === 'home') router.push('/app');
           if (tab === 'tasks') router.push('/app/tasks');
+          if (tab === 'chat') router.push('/app/chat');
         }}
       />
     </div>
