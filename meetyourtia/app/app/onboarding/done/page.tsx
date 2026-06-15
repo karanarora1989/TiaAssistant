@@ -56,8 +56,9 @@ export default function OnboardingDone() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to complete onboarding');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to complete onboarding');
       }
 
       // Clear session storage

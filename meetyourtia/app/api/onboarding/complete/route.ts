@@ -56,7 +56,7 @@ Return ONLY valid JSON, no markdown.`;
     soulDocument.onboarding_complete = true;
 
     // Insert Soul
-    await supabaseAdmin
+    const { error: soulError } = await supabaseAdmin
       .from('soul')
       .upsert({
         user_id: userId,
@@ -64,6 +64,7 @@ Return ONLY valid JSON, no markdown.`;
         version: 1,
         last_updated: new Date().toISOString(),
       });
+    if (soulError) throw new Error(`Soul save failed: ${soulError.message}`);
 
     // Insert People
     if (people.length > 0) {
@@ -76,9 +77,10 @@ Return ONLY valid JSON, no markdown.`;
         updated_at: new Date().toISOString(),
       }));
 
-      await supabaseAdmin
+      const { error: peopleError } = await supabaseAdmin
         .from('people')
-        .insert(peopleRows);
+        .upsert(peopleRows, { onConflict: 'user_id,name', ignoreDuplicates: true });
+      if (peopleError) throw new Error(`People save failed: ${peopleError.message}`);
     }
 
     // Initialize Brain with basic summary
@@ -104,13 +106,14 @@ Return ONLY valid JSON, no markdown.`;
       last_interaction: new Date().toISOString(),
     };
 
-    await supabaseAdmin
+    const { error: brainError } = await supabaseAdmin
       .from('brain')
       .upsert({
         user_id: userId,
         summary: brainSummary,
         last_updated: new Date().toISOString(),
       });
+    if (brainError) throw new Error(`Brain save failed: ${brainError.message}`);
 
     // Update Clerk metadata with phone number
     try {
