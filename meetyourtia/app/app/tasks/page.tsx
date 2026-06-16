@@ -1,52 +1,99 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { BottomNav, FAB, EmptyState, LoadingSpinner, Chip } from '@/components/tia/shared';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { BottomNav, FAB, EmptyState, LoadingSpinner } from '@/components/tia/shared';
 import { TaskCard } from '@/components/tia/TaskCard';
 import { Task } from '@/lib/supabase';
 
-export default function TasksPage() {
+// ── DayStrip ─────────────────────────────────────────────────
+
+function buildDays() {
+  const today = new Date();
+  return Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    return {
+      dayLabel: i === 0 ? 'Today' : d.toLocaleDateString('en-IN', { weekday: 'short' }),
+      dateNum: d.getDate(),
+      iso: d.toISOString().split('T')[0],
+    };
+  });
+}
+
+function DayStrip({
+  selectedIso,
+  onSelect,
+}: {
+  selectedIso: string;
+  onSelect: (iso: string) => void;
+}) {
+  const days = buildDays();
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+      {days.map(d => (
+        <button
+          key={d.iso}
+          onClick={() => onSelect(d.iso)}
+          className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl border transition-smooth min-w-[52px] ${
+            d.iso === selectedIso
+              ? 'bg-[#151008] border-gold/30'
+              : 'bg-surface-1 border-border-2'
+          }`}
+        >
+          <span
+            className={`text-[10px] font-medium ${
+              d.iso === selectedIso ? 'text-gold' : 'text-text-ghost'
+            }`}
+          >
+            {d.dayLabel}
+          </span>
+          <span
+            className={`text-base font-medium ${
+              d.iso === selectedIso ? 'text-gold' : 'text-text-primary'
+            }`}
+          >
+            {d.dateNum}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────
+
+function todayIso() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function TasksContent() {
   const router = useRouter();
   const pathname = usePathname();
-  const [view, setView] = useState<'today' | 'upcoming'>(() => {
-    if (typeof window !== 'undefined') {
-      const p = new URLSearchParams(window.location.search).get('view');
-      if (p === 'upcoming') return 'upcoming';
-    }
-    return 'today';
-  });
-  const [domain, setDomain] = useState<'all' | 'work' | 'personal'>('all');
+  const searchParams = useSearchParams();
+
+  const [selectedDay, setSelectedDay] = useState(todayIso());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const activeCategory = searchParams.get('category') ?? 'all';
+  const activePeople = searchParams.get('people')?.split(',').filter(Boolean) ?? [];
+  const filterCount =
+    (activeCategory !== 'all' ? 1 : 0) + activePeople.length;
+
   useEffect(() => {
     fetchTasks();
-  }, [view, domain]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchTasks = async () => {
     setLoading(true);
     setError('');
-
     try {
-      const params = new URLSearchParams({
-        view,
-        status: 'open',
-      });
-
-      if (domain !== 'all') {
-        params.append('domain', domain);
-      }
-
-      const response = await fetch(`/api/tasks?${params.toString()}`);
+      const response = await fetch('/api/tasks?view=upcoming&status=open');
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch tasks');
-      }
-
-      setTasks(data.data.tasks || []);
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch tasks');
+      setTasks(data.data?.tasks ?? []);
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {
@@ -54,55 +101,45 @@ export default function TasksPage() {
     }
   };
 
+  // Client-side filtering
+  const needsAttention = tasks.filter(t => t.needs_intervention);
+
+  const dayTasks = tasks
+    .filter(t => !t.needs_intervention)
+    .filter(t => {
+      if (!t.due_date_iso) return selectedDay === todayIso();
+      return String(t.due_date_iso).startsWith(selectedDay);
+    })
+    .filter(t => activeCategory === 'all' || t.task_domain === activeCategory)
+    .filter(t => activePeople.length === 0 || activePeople.includes(t.assigned_to ?? ''));
+
   return (
     <div className="min-h-screen bg-surface-0 pb-24">
-      {/* Top Bar */}
+      {/* Top bar */}
       <div className="px-6 py-4 border-b border-border-1">
-        <h1 className="text-[15px] font-medium text-text-primary tracking-tighter-01 mb-4">
-          Tasks
-        </h1>
-
-        {/* View Tabs */}
-        <div className="flex gap-2 mb-3">
-          <Chip
-            selected={view === 'today'}
-            onClick={() => setView('today')}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-[15px] font-medium text-text-primary tracking-tighter-01">
+            Tasks
+          </h1>
+          <button
+            onClick={() => router.push('/app/tasks/filters')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-smooth ${
+              filterCount > 0
+                ? 'bg-[#151008] border-gold/30 text-gold'
+                : 'bg-surface-1 border-border-2 text-text-secondary'
+            }`}
           >
-            Today
-          </Chip>
-          <Chip
-            selected={view === 'upcoming'}
-            onClick={() => setView('upcoming')}
-          >
-            Next 5 days
-          </Chip>
+            <span>⊟</span>
+            <span>Filters{filterCount > 0 ? ` · ${filterCount}` : ''}</span>
+          </button>
         </div>
 
-        {/* Domain Filter */}
-        <div className="flex gap-2">
-          <Chip
-            selected={domain === 'all'}
-            onClick={() => setDomain('all')}
-          >
-            All
-          </Chip>
-          <Chip
-            selected={domain === 'work'}
-            onClick={() => setDomain('work')}
-          >
-            Work
-          </Chip>
-          <Chip
-            selected={domain === 'personal'}
-            onClick={() => setDomain('personal')}
-          >
-            Personal
-          </Chip>
-        </div>
+        {/* DayStrip */}
+        <DayStrip selectedIso={selectedDay} onSelect={setSelectedDay} />
       </div>
 
       {/* Content */}
-      <div className="px-6 py-6">
+      <div className="px-6 py-6 space-y-6">
         {loading && (
           <div className="flex items-center justify-center py-12">
             <LoadingSpinner size="lg" />
@@ -110,49 +147,77 @@ export default function TasksPage() {
         )}
 
         {error && (
-          <div className="p-4 bg-overdue-red/10 border border-overdue-red rounded-xl mb-4">
+          <div className="p-4 bg-overdue-red/10 border border-overdue-red rounded-xl">
             <p className="text-sm text-overdue-red">{error}</p>
           </div>
         )}
 
-        {!loading && !error && tasks.length === 0 && (
-          <EmptyState
-            icon="✓"
-            title={view === 'today' ? 'All clear for today!' : 'Nothing coming up'}
-            description={view === 'today' 
-              ? 'You have no tasks due today. Great work!' 
-              : 'No tasks in the next 5 days.'}
-            action={{
-              label: 'Capture a task',
-              onClick: () => router.push('/app/voice'),
-            }}
-          />
-        )}
+        {!loading && !error && (
+          <>
+            {/* Needs Attention section */}
+            {needsAttention.length > 0 && (
+              <div>
+                <p className="text-[11px] uppercase tracking-wider-08 text-text-ghost font-medium mb-3">
+                  Needs attention
+                </p>
+                <div className="space-y-3">
+                  {needsAttention.map(t => (
+                    <TaskCard
+                      key={t.id}
+                      task={t}
+                      onClick={() => router.push(`/app/tasks/${t.id}`)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {!loading && !error && tasks.length > 0 && (
-          <div className="space-y-3">
-            {tasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onClick={() => router.push(`/app/tasks/${task.id}`)}
+            {/* Day tasks */}
+            {dayTasks.length === 0 && needsAttention.length === 0 ? (
+              <EmptyState
+                icon="✓"
+                title="All clear"
+                description="No tasks for this day."
+                action={{ label: 'Capture a task', onClick: () => router.push('/app/voice') }}
               />
-            ))}
-          </div>
+            ) : dayTasks.length === 0 ? null : (
+              <div>
+                {needsAttention.length > 0 && (
+                  <p className="text-[11px] uppercase tracking-wider-08 text-text-ghost font-medium mb-3">
+                    Tasks
+                  </p>
+                )}
+                <div className="space-y-3">
+                  {dayTasks.map(t => (
+                    <TaskCard
+                      key={t.id}
+                      task={t}
+                      onClick={() => router.push(`/app/tasks/${t.id}`)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* FAB - Voice Capture */}
       <FAB onClick={() => router.push('/app/voice')} icon="🎙" />
-
-      {/* Bottom Navigation */}
       <BottomNav
         pathname={pathname}
-        onNavigate={(tab) => {
+        onNavigate={tab => {
           if (tab === 'home') router.push('/app');
           if (tab === 'people') router.push('/app/people');
         }}
       />
     </div>
+  );
+}
+
+export default function TasksPage() {
+  return (
+    <Suspense>
+      <TasksContent />
+    </Suspense>
   );
 }

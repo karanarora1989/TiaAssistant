@@ -34,15 +34,17 @@ class BlandAI {
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.BLAND_API_KEY || '';
-    if (!this.apiKey) {
-      throw new Error('Bland AI API key not configured');
-    }
+  }
+
+  private assertKey() {
+    if (!this.apiKey) throw new Error('Bland AI API key not configured');
   }
 
   /**
    * Make an AI phone call
    */
   async makeCall(request: BlandCallRequest): Promise<BlandCallResponse> {
+    this.assertKey();
     try {
       const response = await fetch(`${this.baseUrl}/calls`, {
         method: 'POST',
@@ -82,6 +84,7 @@ class BlandAI {
    * Get call details
    */
   async getCall(callId: string): Promise<any> {
+    this.assertKey();
     try {
       const response = await fetch(`${this.baseUrl}/calls/${callId}`, {
         headers: {
@@ -100,96 +103,6 @@ class BlandAI {
     }
   }
 
-  /**
-   * Build call prompt for task assignment
-   */
-  buildAssignmentPrompt(task: any, userName: string): string {
-    return `
-You are Tia, an AI assistant for ${userName}.
-You are professional, friendly, and concise.
-
-Call ${task.assigned_to} to inform them about a new task:
-- Task: ${task.title}
-- Due: ${task.due_date || 'No specific deadline'}
-- Priority: ${task.priority || 'medium'}
-
-Goals:
-1. Confirm they received the task
-2. Ask if they have any questions
-3. Confirm they can complete it by the due date
-
-If they have concerns, note them and say you'll inform ${userName}.
-
-Keep the call brief (under 2 minutes).
-`;
-  }
-
-  /**
-   * Build call prompt for reminder
-   */
-  buildReminderPrompt(task: any, userName: string, hoursUntilDue: number): string {
-    return `
-You are Tia, an AI assistant for ${userName}.
-You are professional, friendly, and concise.
-
-Call ${task.assigned_to} to remind them about:
-- Task: ${task.title}
-- Due: ${task.due_date} (in ${hoursUntilDue} hours)
-
-Goals:
-1. Ask for current status
-2. Confirm they're on track
-3. Ask if they need any help
-
-If they're blocked, note the blocker and say you'll inform ${userName}.
-
-Keep the call brief (under 2 minutes).
-`;
-  }
-
-  /**
-   * Build call prompt for follow-up
-   */
-  buildFollowupPrompt(task: any, userName: string, hoursOverdue: number): string {
-    return `
-You are Tia, an AI assistant for ${userName}.
-You are professional, friendly, and understanding but firm.
-
-Call ${task.assigned_to} about an overdue task:
-- Task: ${task.title}
-- Was due: ${task.due_date} (${hoursOverdue} hours ago)
-
-Goals:
-1. Ask why it's delayed
-2. Get new completion estimate
-3. Ask if they need help
-
-Be understanding but emphasize the importance of completion.
-If they need help, say you'll inform ${userName} immediately.
-
-Keep the call brief (under 2 minutes).
-`;
-  }
-
-  /**
-   * Build call prompt for user escalation
-   */
-  buildEscalationPrompt(task: any, userName: string, reason: string): string {
-    return `
-You are Tia, calling ${userName} to escalate an issue.
-
-Task: ${task.title}
-Assigned to: ${task.assigned_to}
-Issue: ${reason}
-
-Be brief and clear:
-1. Explain the situation
-2. Mention you've tried calling ${task.assigned_to} multiple times
-3. Ask if they want you to take any action
-
-Keep the call very brief (under 1 minute).
-`;
-  }
 }
 
 // Export singleton instance

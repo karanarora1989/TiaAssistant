@@ -85,24 +85,94 @@ export function analyzeTaskUrgency(task: any): UrgencyAnalysis {
 }
 
 /**
- * Calculate when to make the call
+ * Calculate when to make the call (legacy — kept for backward compat)
  */
 export function calculateCallTime(task: any, urgency: UrgencyAnalysis): Date {
   if (!task.due_date_iso) {
-    // No due date - call immediately
     return new Date();
   }
-  
   const dueDate = new Date(task.due_date_iso);
   const callTime = new Date(dueDate.getTime() - urgency.callBeforeMinutes * 60 * 1000);
-  
-  // Don't call in the past
   const now = new Date();
-  if (callTime < now) {
-    return now;
-  }
-  
+  if (callTime < now) return now;
   return callTime;
+}
+
+// ── IST time-window enforcement ───────────────────────────────
+
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+export function enforceTimeWindow(date: Date): Date {
+  const istDate = new Date(date.getTime() + IST_OFFSET_MS);
+  const hours = istDate.getUTCHours();
+  if (hours >= 8 && hours < 19) return date;
+  const next9am = new Date(istDate);
+  next9am.setUTCHours(9, 0, 0, 0);
+  if (hours >= 19) next9am.setUTCDate(next9am.getUTCDate() + 1);
+  return new Date(next9am.getTime() - IST_OFFSET_MS);
+}
+
+function getNext9am(): Date {
+  const now = new Date(Date.now() + IST_OFFSET_MS);
+  const next = new Date(now);
+  next.setUTCHours(9, 0, 0, 0);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return new Date(next.getTime() - IST_OFFSET_MS);
+}
+
+// ── Intelligent initial call time ─────────────────────────────
+
+const COMPLEX_KEYWORDS = /deck|slides|presentation|report|analysis|proposal|strategy|document/i;
+
+export function calculateInitialCallTime(task: any): Date {
+  if (!task.due_date_iso) {
+    return enforceTimeWindow(new Date(Date.now() + 30 * 60 * 1000));
+  }
+
+  const dueDate = new Date(task.due_date_iso);
+  const hoursUntilDue = (dueDate.getTime() - Date.now()) / (1000 * 60 * 60);
+  const isComplex = COMPLEX_KEYWORDS.test(`${task.title} ${task.context ?? ''}`);
+
+  let callTime: Date;
+  if (hoursUntilDue <= 2) {
+    callTime = new Date(Date.now() + 5 * 60 * 1000);
+  } else if (hoursUntilDue <= 6) {
+    callTime = new Date(dueDate.getTime() - 2 * 60 * 60 * 1000);
+  } else if (hoursUntilDue <= 24) {
+    callTime = getNext9am();
+  } else if (isComplex) {
+    callTime = new Date(dueDate.getTime() - 24 * 60 * 60 * 1000);
+  } else {
+    callTime = new Date(dueDate.getTime() - 4 * 60 * 60 * 1000);
+  }
+
+  if (callTime < new Date()) callTime = new Date(Date.now() + 5 * 60 * 1000);
+  return enforceTimeWindow(callTime);
+}
+
+// ── No-answer terminal check ──────────────────────────────────
+
+export function isNoAnswerTerminal(task: any, noAnswerCount: number): boolean {
+  const hoursUntilDue = task.due_date_iso
+    ? (new Date(task.due_date_iso).getTime() - Date.now()) / (1000 * 60 * 60)
+    : 999;
+  if (hoursUntilDue <= 2 && noAnswerCount >= 1) return true;
+  if (hoursUntilDue <= 6 && noAnswerCount >= 2) return true;
+  if (noAnswerCount >= 4) return true;
+  return false;
+}
+
+// ── Retry timing (urgency-driven) ─────────────────────────────
+
+export function calculateRetryTime(attemptNumber: number, urgency: CallUrgency): Date {
+  const intervals: Record<CallUrgency, number[]> = {
+    critical: [10, 15, 20, 30],
+    high:     [15, 30, 60, 120],
+    medium:   [30, 60, 120, 240],
+    low:      [60, 120, 240, 480],
+  };
+  const minutes = intervals[urgency][Math.min(attemptNumber, 3)];
+  return enforceTimeWindow(new Date(Date.now() + minutes * 60 * 1000));
 }
 
 /**

@@ -7,41 +7,35 @@ import { Task, Person } from '@/lib/supabase';
 import { AgentControl } from '@/components/tia/AgentControl';
 import { PeoplePicker } from '@/components/tia/PeoplePicker';
 
-function CallNowButton({ taskId }: { taskId: string }) {
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+const OUTCOME_BADGE: Record<string, { label: string; cls: string }> = {
+  on_track:                { label: '✓ On track',              cls: 'bg-done-green/10 text-done-green border-done-green/20' },
+  committed_new_eta:       { label: '🕐 New deadline',          cls: 'bg-gold/10 text-gold border-gold/20' },
+  partial_progress:        { label: '↗ In progress',            cls: 'bg-work-blue/10 text-work-blue-text border-work-blue/20' },
+  partial_progress_no_eta: { label: '↗ Partial — ETA needed',  cls: 'bg-gold/10 text-gold border-gold/20' },
+  behind_no_commitment:    { label: '⏳ Behind',                cls: 'bg-overdue-red/10 text-overdue-red border-overdue-red/20' },
+  no_commitment:           { label: '○ No update',              cls: 'bg-surface-2 text-text-muted border-border-2' },
+  blocked_external:        { label: '🚫 Blocked',               cls: 'bg-overdue-red/10 text-overdue-red border-overdue-red/20' },
+  blocked_cannot_complete: { label: "🙅 Can't complete",        cls: 'bg-overdue-red/10 text-overdue-red border-overdue-red/20' },
+  no_answer:               { label: '📵 No answer — retried',   cls: 'bg-surface-2 text-text-muted border-border-2' },
+  no_answer_terminal:      { label: '📵 Unreachable',           cls: 'bg-overdue-red/10 text-overdue-red border-overdue-red/20' },
+};
 
-  const trigger = async () => {
-    setLoading(true);
-    setResult(null);
-    try {
-      const res = await fetch(`/api/tasks/${taskId}/call-now`, { method: 'POST' });
-      const data = await res.json();
-      setResult({ ok: res.ok, message: res.ok ? data.message : (data.error || 'Failed') });
-    } catch {
-      setResult({ ok: false, message: 'Network error' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+function OutcomeBadge({ state }: { state: string }) {
+  const b = OUTCOME_BADGE[state];
+  if (!b) return null;
   return (
-    <div className="mt-3 pt-3 border-t border-border-2">
-      <button
-        onClick={trigger}
-        disabled={loading}
-        className="text-xs text-gold hover:text-gold-light transition-smooth flex items-center gap-1 disabled:opacity-50"
-      >
-        {loading ? <LoadingSpinner size="sm" /> : '📞'}
-        {loading ? 'Triggering call...' : 'Trigger call now'}
-      </button>
-      {result && (
-        <p className={`text-xs mt-1 ${result.ok ? 'text-done-green' : 'text-overdue-red'}`}>
-          {result.message}
-        </p>
-      )}
-    </div>
+    <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${b.cls}`}>
+      {b.label}
+    </span>
   );
+}
+
+interface AiCall {
+  id: string;
+  outcome_state?: string;
+  call_summary?: string;
+  completed_at: string;
+  status: string;
 }
 
 interface TaskHistory {
@@ -62,6 +56,7 @@ export default function TaskDetailPage() {
 
   const [task, setTask] = useState<Task | null>(null);
   const [history, setHistory] = useState<TaskHistory[]>([]);
+  const [aiCalls, setAiCalls] = useState<AiCall[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
@@ -83,7 +78,18 @@ export default function TaskDetailPage() {
     fetchTask();
     fetchHistory();
     fetchPeople();
+    fetchAiCalls();
   }, [taskId]);
+
+  const fetchAiCalls = async () => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/calls`);
+      if (res.ok) {
+        const data = await res.json();
+        setAiCalls(data.data?.calls ?? []);
+      }
+    } catch {}
+  };
 
   const fetchPeople = async () => {
     try {
@@ -445,16 +451,39 @@ export default function TaskDetailPage() {
           }}
         />
 
-        {/* Agent Control Section */}
-        {task.assigned_to && (
-          <Card className="mb-6">
-            <h3 className="text-xs text-text-secondary mb-3 uppercase tracking-wider-03">
-              Autonomous Agent
-            </h3>
+        {/* Agent Control — delegated tasks only */}
+        {task.assigned_to && task.assigned_to !== 'self' && (
+          <div className="mb-6">
             <AgentControl taskId={taskId} task={task} onUpdate={fetchTask} />
-            {task.agent_enabled && (
-              <CallNowButton taskId={taskId} />
-            )}
+          </div>
+        )}
+
+        {/* Follow-up history — delegated tasks only */}
+        {task.assigned_to && task.assigned_to !== 'self' && aiCalls.length > 0 && (
+          <Card className="mb-6">
+            <h3 className="text-xs text-text-secondary mb-4 uppercase tracking-wider-03">
+              Follow-up history
+            </h3>
+            <div className="border-t border-border-2">
+              {aiCalls.map(call => (
+                <div key={call.id} className="py-3 border-b border-border-2 last:border-b-0 space-y-1">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-[10px] text-text-secondary">
+                      {new Date(call.completed_at).toLocaleString('en-IN', {
+                        weekday: 'short', day: 'numeric', month: 'short',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </span>
+                    {call.outcome_state && <OutcomeBadge state={call.outcome_state} />}
+                  </div>
+                  {call.status === 'no_answer' ? (
+                    <p className="text-xs text-text-ghost">No answer — retried</p>
+                  ) : call.call_summary ? (
+                    <p className="text-xs text-text-secondary italic line-clamp-2">"{call.call_summary}"</p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
           </Card>
         )}
 

@@ -82,7 +82,7 @@ async function escalateViaCall(escalationId: string, userId: string, task: any, 
     // Get user phone number
     const { data: soul } = await supabaseAdmin
       .from('soul')
-      .select('phone_number, tia_voice_name')
+      .select('phone_number, tia_voice_name, user_name')
       .eq('user_id', userId)
       .single();
 
@@ -92,10 +92,12 @@ async function escalateViaCall(escalationId: string, userId: string, task: any, 
     }
 
     // Get user name
-    const userName = 'Karan'; // TODO: Get from soul table
+    const userName = soul?.user_name ?? 'your manager';
     
-    // Build escalation prompt
-    const prompt = blandAI.buildEscalationPrompt(task, userName, reason);
+    const prompt = `You are Tia, an AI assistant calling ${userName} to flag an urgent situation.
+Task: "${task.title}" assigned to ${task.assigned_to}.
+Issue: ${reason}.
+Be brief and clear: explain what happened, mention how many times you tried to reach ${task.assigned_to}, and ask what action ${userName} would like to take. Keep the call under 90 seconds.`;
     
     // Make the call
     const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/webhook`;

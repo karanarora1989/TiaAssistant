@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getAuthUserId } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
-import { executeCall } from '@/lib/call-scheduler';
+import { groupByAssignee, executeGroup, getPendingCalls } from '@/lib/call-scheduler';
 import { successResponse, errorResponse } from '@/lib/api-handler';
 
 /**
@@ -37,7 +37,13 @@ export async function POST(
       .update({ status: 'scheduled' })
       .eq('id', call.id);
 
-    await executeCall(call.id);
+    // Re-fetch with task data so groupByAssignee can work
+    const pending = await getPendingCalls();
+    const forThisCall = pending.filter((c: any) => c.id === call.id);
+    if (forThisCall.length > 0) {
+      const groups = groupByAssignee(forThisCall);
+      for (const group of groups) await executeGroup(group);
+    }
 
     return successResponse({
       call_id: call.id,

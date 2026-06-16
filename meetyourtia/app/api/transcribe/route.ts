@@ -2,22 +2,19 @@ import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import { successResponse, errorResponse } from '@/lib/api-handler';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const audio = formData.get('audio') as File;
-    
-    if (!audio) {
-      return errorResponse('No audio file provided', 400);
-    }
-
-    // Check if OpenAI API key is configured
     if (!process.env.OPENAI_API_KEY) {
       return errorResponse('OpenAI API key not configured', 500);
+    }
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    const formData = await req.formData();
+    const audio = formData.get('audio') as File;
+
+    if (!audio) {
+      return errorResponse('No audio file provided', 400);
     }
 
     console.log('Transcribing audio with Whisper:', {

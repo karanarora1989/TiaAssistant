@@ -43,6 +43,14 @@ export interface Task {
   followup_count?: number;
   needs_intervention?: boolean;
   
+  // Call scheduling
+  call_urgency?: string;
+  call_scheduled_at?: string;
+  call_attempts?: number;
+  last_call_at?: string;
+  next_retry_at?: string;
+  next_followup_at?: string;
+
   // Agent control fields
   agent_enabled?: boolean;
   agent_source?: string;

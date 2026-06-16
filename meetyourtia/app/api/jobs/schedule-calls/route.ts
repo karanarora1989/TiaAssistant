@@ -1,39 +1,35 @@
 import { NextRequest } from 'next/server';
 import { successResponse, errorResponse } from '@/lib/api-handler';
-import { getPendingCalls, executeCall } from '@/lib/call-scheduler';
+import { getPendingCalls, groupByAssignee, executeGroup } from '@/lib/call-scheduler';
 
-/**
- * Cron job to execute scheduled calls
- * Should be called every minute by Vercel Cron or similar
- */
 export async function GET(req: NextRequest) {
   try {
-    // Vercel Cron endpoints are protected at the infrastructure level — no additional
-    // auth check needed. A CRON_SECRET env var mismatch was silently blocking all calls.
     console.log('Running call scheduler cron job...');
 
-    // Get calls that need to be executed now
     const pendingCalls = await getPendingCalls();
 
     if (pendingCalls.length === 0) {
       console.log('No pending calls to execute');
-      return successResponse({ 
-        executed: 0,
-        message: 'No pending calls'
-      });
+      return successResponse({ executed: 0, message: 'No pending calls' });
     }
 
     console.log(`Found ${pendingCalls.length} pending calls`);
 
-    // Execute each call
+    const groups = groupByAssignee(pendingCalls);
+    console.log(`Batched into ${groups.length} group(s)`);
+
     const results = [];
-    for (const call of pendingCalls) {
+    for (const group of groups) {
       try {
-        await executeCall(call.id);
-        results.push({ callId: call.id, status: 'success' });
+        await executeGroup(group);
+        results.push({ callIds: group.calls.map(c => c.callId), status: 'success' });
       } catch (error: any) {
-        console.error(`Failed to execute call ${call.id}:`, error);
-        results.push({ callId: call.id, status: 'failed', error: error.message });
+        console.error('Failed to execute group:', error);
+        results.push({
+          callIds: group.calls.map(c => c.callId),
+          status: 'failed',
+          error: error.message,
+        });
       }
     }
 
@@ -42,13 +38,9 @@ export async function GET(req: NextRequest) {
 
     console.log(`Call execution complete: ${successCount} success, ${failedCount} failed`);
 
-    return successResponse({
-      executed: successCount,
-      failed: failedCount,
-      results
-    });
+    return successResponse({ executed: successCount, failed: failedCount, results });
   } catch (error: any) {
     console.error('Schedule calls cron error:', error);
-    return errorResponse(error.message || 'Cron job failed', 500);
+    return errorResponse(error.message ?? 'Cron job failed', 500);
   }
 }

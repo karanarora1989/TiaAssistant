@@ -1,17 +1,15 @@
-/**
- * Call Scheduler
- * Manages scheduling and execution of AI calls
- */
-
 import { supabaseAdmin } from './supabase';
 import { blandAI } from './bland-ai';
 import {
   analyzeTaskUrgency,
-  calculateCallTime,
-  calculateNextRetry,
-  determineCallType,
-  getHoursFromDue
+  calculateInitialCallTime,
+  calculateRetryTime,
+  isNoAnswerTerminal,
 } from './urgency-detector';
+import { buildFollowupPrompt } from './prompts/follow-up';
+import type { BatchGroup, FollowupContext } from './types/follow-up';
+
+// ── Schedule a new call when agent is first enabled ───────────
 
 interface ScheduleCallParams {
   taskId: string;
@@ -20,257 +18,225 @@ interface ScheduleCallParams {
   recipientName: string;
 }
 
-/**
- * Schedule a call for a task
- */
 export async function scheduleCall(params: ScheduleCallParams) {
-  try {
-    // Get task details
-    const { data: task } = await supabaseAdmin
-      .from('tasks')
-      .select('*')
-      .eq('id', params.taskId)
-      .single();
+  const { data: task } = await supabaseAdmin
+    .from('tasks')
+    .select('*')
+    .eq('id', params.taskId)
+    .single();
 
-    if (!task) {
-      throw new Error('Task not found');
-    }
+  if (!task) throw new Error('Task not found');
 
-    // Analyze urgency
-    const urgency = analyzeTaskUrgency(task);
-    
-    // Calculate call time
-    const callTime = calculateCallTime(task, urgency);
-    
-    // Determine call type
-    const callType = determineCallType(task);
-    
-    // Update task with call info
-    await supabaseAdmin
-      .from('tasks')
-      .update({
-        call_urgency: urgency.urgency,
-        call_scheduled_at: callTime.toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', params.taskId);
-    
-    // Create call record
-    const { data: callRecord } = await supabaseAdmin
-      .from('ai_calls')
-      .insert({
-        task_id: params.taskId,
-        user_id: params.userId,
-        recipient_phone: params.recipientPhone,
-        recipient_name: params.recipientName,
-        call_type: callType,
-        call_urgency: urgency.urgency,
-        attempt_number: (task.call_attempts || 0) + 1,
-        scheduled_at: callTime.toISOString(),
-        status: 'scheduled'
-      })
-      .select()
-      .single();
-    
-    console.log(`Call scheduled for task ${params.taskId} at ${callTime.toISOString()}`);
-    
-    return callRecord;
-  } catch (error: any) {
-    console.error('Schedule call error:', error);
-    throw error;
-  }
+  const callTime = calculateInitialCallTime(task);
+
+  await supabaseAdmin
+    .from('tasks')
+    .update({ call_scheduled_at: callTime.toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', params.taskId);
+
+  const { data: callRecord } = await supabaseAdmin
+    .from('ai_calls')
+    .insert({
+      task_id: params.taskId,
+      user_id: params.userId,
+      recipient_phone: params.recipientPhone,
+      recipient_name: params.recipientName,
+      call_type: 'followup',
+      call_urgency: analyzeTaskUrgency(task).urgency,
+      attempt_number: 1,
+      scheduled_at: callTime.toISOString(),
+      status: 'scheduled',
+    })
+    .select()
+    .single();
+
+  return callRecord;
 }
 
-/**
- * Execute a scheduled call
- */
-export async function executeCall(callId: string) {
-  try {
-    // Get call details
-    const { data: call } = await supabaseAdmin
-      .from('ai_calls')
-      .select('*, tasks(*)')
-      .eq('id', callId)
-      .single();
+// ── Group pending calls by assignee (for batching) ────────────
 
-    if (!call) {
-      throw new Error('Call not found');
+export function groupByAssignee(calls: any[]): BatchGroup[] {
+  const groups = new Map<string, BatchGroup>();
+
+  for (const call of calls) {
+    const key = `${call.recipient_phone}::${call.user_id}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        userId: call.user_id,
+        recipientPhone: call.recipient_phone,
+        recipientName: call.recipient_name,
+        calls: [],
+      });
+    }
+    groups.get(key)!.calls.push({ callId: call.id, task: call.tasks });
+  }
+
+  const result: BatchGroup[] = [];
+
+  for (const group of groups.values()) {
+    if (group.calls.length === 1) {
+      result.push(group);
+      continue;
     }
 
-    // Get user info for voice name
-    const { data: soul } = await supabaseAdmin
-      .from('soul')
-      .select('tia_voice_name')
-      .eq('user_id', call.user_id)
-      .single();
+    const hoursUntilDue = (task: any) =>
+      task?.due_date_iso
+        ? (new Date(task.due_date_iso).getTime() - Date.now()) / (1000 * 60 * 60)
+        : 999;
 
-    const voiceName = soul?.tia_voice_name || 'Maya';
-    
-    // Validate required env vars before attempting the call
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    const blandApiKey = process.env.BLAND_API_KEY;
-    if (!appUrl || !blandApiKey) {
-      const missing = [!appUrl && 'NEXT_PUBLIC_APP_URL', !blandApiKey && 'BLAND_API_KEY']
-        .filter(Boolean).join(', ');
-      await supabaseAdmin.from('ai_calls').update({
-        status: 'failed',
-        completed_at: new Date().toISOString()
-      }).eq('id', callId);
-      throw new Error(`Missing required env vars: ${missing}`);
-    }
+    // Urgency gate: split if any task due <3h and any task due >6h
+    const urgent = group.calls.filter(c => hoursUntilDue(c.task) <= 3);
+    const normal = group.calls.filter(c => hoursUntilDue(c.task) > 6);
 
-    // Build prompt based on call type
-    let prompt = '';
-    const task = call.tasks;
-    const hoursFromDue = Math.abs(getHoursFromDue(task));
-    
-    // Get user name from soul or default
-    const userName = 'Karan'; // TODO: Get from soul table
-    
-    switch (call.call_type) {
-      case 'assignment':
-        prompt = blandAI.buildAssignmentPrompt(task, userName);
-        break;
-      case 'reminder':
-        prompt = blandAI.buildReminderPrompt(task, userName, hoursFromDue);
-        break;
-      case 'followup':
-        prompt = blandAI.buildFollowupPrompt(task, userName, hoursFromDue);
-        break;
+    if (urgent.length > 0 && normal.length > 0) {
+      result.push({ ...group, calls: urgent });
+      result.push({ ...group, calls: normal });
+    } else {
+      group.calls.sort((a, b) => hoursUntilDue(a.task) - hoursUntilDue(b.task));
+      result.push(group);
     }
-    
-    // Update call status
+  }
+
+  return result;
+}
+
+// ── Execute a batch group ─────────────────────────────────────
+
+export async function executeGroup(group: BatchGroup): Promise<void> {
+  const callIds = group.calls.map(c => c.callId);
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const blandApiKey = process.env.BLAND_API_KEY;
+  if (!appUrl || !blandApiKey) {
+    const missing = [!appUrl && 'NEXT_PUBLIC_APP_URL', !blandApiKey && 'BLAND_API_KEY']
+      .filter(Boolean)
+      .join(', ');
     await supabaseAdmin
       .from('ai_calls')
-      .update({
-        status: 'calling',
-        initiated_at: new Date().toISOString()
-      })
-      .eq('id', callId);
-    
-    // Make the call
-    const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/webhook`;
-    
+      .update({ status: 'failed', completed_at: new Date().toISOString() })
+      .in('id', callIds);
+    throw new Error(`Missing required env vars: ${missing}`);
+  }
+
+  const { data: soul } = await supabaseAdmin
+    .from('soul')
+    .select('tia_voice_name, user_name')
+    .eq('user_id', group.userId)
+    .single();
+
+  const ownerName = soul?.user_name ?? 'your manager';
+  const voiceName = (soul?.tia_voice_name ?? 'Maya').toLowerCase();
+
+  const primaryTask = group.calls[0].task;
+  if (!primaryTask) {
+    await supabaseAdmin.from('ai_calls').update({ status: 'failed' }).in('id', callIds);
+    return;
+  }
+
+  const { data: callHistory } = await supabaseAdmin
+    .from('ai_calls')
+    .select('outcome_state, call_summary, completed_at')
+    .eq('task_id', primaryTask.id)
+    .eq('status', 'completed')
+    .not('outcome_state', 'is', null)
+    .order('completed_at', { ascending: false })
+    .limit(3);
+
+  const hoursUntilDue = primaryTask.due_date_iso
+    ? (new Date(primaryTask.due_date_iso).getTime() - Date.now()) / (1000 * 60 * 60)
+    : 999;
+
+  const context: FollowupContext = {
+    ownerName,
+    callHistory: (callHistory ?? []) as any,
+    batchedTasks:
+      group.calls.length > 1
+        ? group.calls.slice(1).map(c => ({
+            id: c.task.id,
+            title: c.task.title,
+            context: c.task.context,
+            due_date_iso: c.task.due_date_iso,
+            priority: c.task.priority,
+          }))
+        : undefined,
+    hoursUntilDue,
+    isOverdue: hoursUntilDue < 0,
+  };
+
+  const prompt = buildFollowupPrompt(primaryTask, context);
+
+  await supabaseAdmin
+    .from('ai_calls')
+    .update({ status: 'calling', initiated_at: new Date().toISOString() })
+    .in('id', callIds);
+
+  try {
     const result = await blandAI.makeCall({
-      phone_number: call.recipient_phone,
+      phone_number: group.recipientPhone,
       task: prompt,
-      voice: voiceName.toLowerCase(),
-      webhook: webhookUrl,
+      voice: voiceName,
+      webhook: `${appUrl}/api/calls/webhook`,
       metadata: {
-        call_id: callId,
-        task_id: call.task_id,
-        user_id: call.user_id,
-        call_type: call.call_type
-      }
+        call_ids: callIds,
+        task_ids: group.calls.map(c => c.task.id),
+        user_id: group.userId,
+      },
     });
-    
-    // Update with Bland call ID
+
     await supabaseAdmin
       .from('ai_calls')
-      .update({
-        bland_call_id: result.call_id
-      })
-      .eq('id', callId);
-    
-    // Update task
-    await supabaseAdmin
-      .from('tasks')
-      .update({
-        call_attempts: (task.call_attempts || 0) + 1,
-        last_call_at: new Date().toISOString()
-      })
-      .eq('id', call.task_id);
-    
-    console.log(`Call executed: ${callId}, Bland ID: ${result.call_id}`);
-    
-    return result;
+      .update({ bland_call_id: result.call_id })
+      .in('id', callIds);
   } catch (error: any) {
-    console.error('Execute call error:', error);
-    
-    // Mark call as failed
     await supabaseAdmin
       .from('ai_calls')
-      .update({
-        status: 'failed',
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', callId);
-    
+      .update({ status: 'failed', completed_at: new Date().toISOString() })
+      .in('id', callIds);
     throw error;
   }
 }
 
-/**
- * Schedule retry for failed call
- */
+// ── Schedule retry for no-answer call ────────────────────────
+
 export async function scheduleRetry(callId: string) {
-  try {
-    // Get call and task details
-    const { data: call } = await supabaseAdmin
-      .from('ai_calls')
-      .select('*, tasks(*)')
-      .eq('id', callId)
-      .single();
+  const { data: call } = await supabaseAdmin
+    .from('ai_calls')
+    .select('*, tasks(*)')
+    .eq('id', callId)
+    .single();
 
-    if (!call) {
-      throw new Error('Call not found');
-    }
+  if (!call) throw new Error('Call not found');
 
-    const task = call.tasks;
-    const urgency = analyzeTaskUrgency(task);
-    
-    // Calculate next retry time
-    const lastCallTime = new Date(call.initiated_at || call.scheduled_at);
-    const nextRetry = calculateNextRetry(lastCallTime, call.attempt_number, urgency);
-    
-    if (!nextRetry) {
-      console.log(`No more retries for call ${callId}`);
-      return null;
-    }
-    
-    // Update task with next retry time
-    await supabaseAdmin
-      .from('tasks')
-      .update({
-        next_retry_at: nextRetry.toISOString()
-      })
-      .eq('id', task.id);
-    
-    // Schedule new call
-    const newCall = await scheduleCall({
-      taskId: task.id,
-      userId: call.user_id,
-      recipientPhone: call.recipient_phone,
-      recipientName: call.recipient_name
-    });
-    
-    console.log(`Retry scheduled for task ${task.id} at ${nextRetry.toISOString()}`);
-    
-    return newCall;
-  } catch (error: any) {
-    console.error('Schedule retry error:', error);
-    throw error;
-  }
+  const task = call.tasks;
+  const urgency = analyzeTaskUrgency(task);
+  const attemptNumber = call.attempt_number ?? 0;
+  const retryAt = calculateRetryTime(attemptNumber, urgency.urgency);
+
+  await supabaseAdmin.from('ai_calls').insert({
+    task_id: task.id,
+    user_id: call.user_id,
+    recipient_phone: call.recipient_phone,
+    recipient_name: call.recipient_name,
+    call_type: call.call_type,
+    call_urgency: urgency.urgency,
+    attempt_number: attemptNumber + 1,
+    scheduled_at: retryAt.toISOString(),
+    status: 'scheduled',
+  });
+
+  return retryAt;
 }
 
-/**
- * Get calls that need to be executed now
- */
+// ── Get calls due for execution ───────────────────────────────
+
 export async function getPendingCalls() {
-  try {
-    const now = new Date().toISOString();
-    
-    const { data: calls } = await supabaseAdmin
-      .from('ai_calls')
-      .select('*')
-      .eq('status', 'scheduled')
-      .lte('scheduled_at', now)
-      .order('scheduled_at', { ascending: true })
-      .limit(10);
-    
-    return calls || [];
-  } catch (error: any) {
-    console.error('Get pending calls error:', error);
-    return [];
-  }
+  const now = new Date().toISOString();
+  const { data: calls } = await supabaseAdmin
+    .from('ai_calls')
+    .select('*, tasks(*)')
+    .eq('status', 'scheduled')
+    .lte('scheduled_at', now)
+    .order('scheduled_at', { ascending: true })
+    .limit(20);
+  return calls ?? [];
 }

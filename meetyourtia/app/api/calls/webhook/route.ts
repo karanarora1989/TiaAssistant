@@ -1,92 +1,136 @@
 import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { successResponse, errorResponse } from '@/lib/api-handler';
-import { scheduleRetry } from '@/lib/call-scheduler';
-import { handleCallEscalation } from '@/lib/escalation';
+import { analyzeTaskUrgency } from '@/lib/urgency-detector';
+import {
+  isAlreadyAnalysed,
+  analyzeTranscript,
+  persistOutcome,
+  scheduleNextAction,
+} from '@/lib/follow-up-intelligence';
+import { isNoAnswerTerminal, calculateRetryTime } from '@/lib/urgency-detector';
 
-/**
- * Webhook handler for Bland AI call status updates
- */
 export async function POST(req: NextRequest) {
   try {
     const payload = await req.json();
-    
-    const {
-      call_id: blandCallId,
-      status,
-      duration,
-      transcript,
-      recording_url,
-      metadata
-    } = payload;
+    const { call_id: blandCallId, status, duration, transcript } = payload;
 
-    console.log('Bland AI webhook received:', { blandCallId, status, metadata });
+    console.log('Bland AI webhook received:', { blandCallId, status });
 
-    // Find our call record
-    const { data: call } = await supabaseAdmin
+    // Find ALL ai_calls rows sharing this bland_call_id (batch-aware)
+    const { data: calls } = await supabaseAdmin
       .from('ai_calls')
-      .select('*')
-      .eq('bland_call_id', blandCallId)
-      .single();
+      .select('*, tasks(*)')
+      .eq('bland_call_id', blandCallId);
 
-    if (!call) {
+    if (!calls || calls.length === 0) {
       console.error('Call not found for Bland ID:', blandCallId);
       return errorResponse('Call not found', 404);
     }
 
-    // Calculate cost (Bland AI charges $0.09/minute)
     const costPerMinute = 0.09;
-    const durationMinutes = duration / 60;
-    const cost = durationMinutes * costPerMinute;
+    const cost = ((duration ?? 0) / 60) * costPerMinute;
 
-    // Map Bland status to our status
-    let callStatus = status;
-    if (status === 'completed') {
-      callStatus = 'completed';
-    } else if (status === 'no-answer' || status === 'busy') {
-      callStatus = 'no_answer';
-    } else if (status === 'failed') {
-      callStatus = 'failed';
-    }
+    const callStatus =
+      status === 'completed'
+        ? 'completed'
+        : status === 'no-answer' || status === 'busy'
+        ? 'no_answer'
+        : 'failed';
 
-    // Update call record
     await supabaseAdmin
       .from('ai_calls')
       .update({
         status: callStatus,
-        duration_seconds: duration,
-        transcript,
+        duration_seconds: duration ?? 0,
+        transcript: transcript ?? '',
         completed_at: new Date().toISOString(),
-        cost_usd: cost
+        cost_usd: cost,
       })
-      .eq('id', call.id);
+      .eq('bland_call_id', blandCallId);
 
-    // Handle based on status
     if (callStatus === 'completed') {
-      console.log(`Call ${call.id} completed successfully`);
-      
-      // TODO: Analyze transcript to extract task status updates
-      // For now, just log it
-      
+      // Idempotency: skip if already analysed
+      const alreadyDone = await isAlreadyAnalysed(calls[0].id);
+      if (alreadyDone) {
+        return successResponse({ received: true, skipped: true });
+      }
+
+      const tasks = calls.map(c => c.tasks).filter(Boolean);
+
+      let analyses;
+      try {
+        analyses = await analyzeTranscript(transcript ?? '', tasks);
+      } catch (err) {
+        // Mark all rows as analysis_failed — cron will retry
+        await supabaseAdmin
+          .from('ai_calls')
+          .update({ outcome_state: 'analysis_failed' })
+          .eq('bland_call_id', blandCallId);
+        console.error('Claude analysis failed:', err);
+        return successResponse({ received: true, analysis: 'failed' });
+      }
+
+      for (const call of calls) {
+        if (!call.tasks) continue;
+        const analysis =
+          analyses.find((a: any) => a.task_id === call.task_id) ?? analyses[0];
+        if (!analysis) continue;
+
+        await persistOutcome(call.id, call.task_id, analysis);
+        await scheduleNextAction(
+          call.task_id,
+          call.user_id,
+          call.recipient_phone,
+          call.recipient_name,
+          analysis
+        );
+      }
     } else if (callStatus === 'no_answer') {
-      console.log(`Call ${call.id} not answered, scheduling retry`);
-      
-      // Schedule retry
-      await scheduleRetry(call.id);
-      
-      // Check if escalation needed
-      await handleCallEscalation(call.id);
-      
-    } else if (callStatus === 'failed') {
-      console.log(`Call ${call.id} failed`);
-      
-      // Check if escalation needed
-      await handleCallEscalation(call.id);
+      for (const call of calls) {
+        if (!call.tasks) continue;
+        const task = call.tasks;
+        const noAnswerCount = (task.followup_count ?? 0) + 1;
+
+        if (isNoAnswerTerminal(task, noAnswerCount)) {
+          await supabaseAdmin
+            .from('ai_calls')
+            .update({ outcome_state: 'no_answer_terminal' })
+            .eq('id', call.id);
+          await supabaseAdmin
+            .from('tasks')
+            .update({
+              needs_intervention: true,
+              blocked_by: `${call.recipient_name ?? 'Assignee'} unreachable — ${noAnswerCount} attempts`,
+            })
+            .eq('id', call.task_id);
+        } else {
+          await supabaseAdmin
+            .from('ai_calls')
+            .update({ outcome_state: 'no_answer' })
+            .eq('id', call.id);
+
+          const urgency = analyzeTaskUrgency(task);
+          const retryAt = calculateRetryTime(call.attempt_number ?? 0, urgency.urgency);
+
+          await supabaseAdmin.from('ai_calls').insert({
+            task_id: call.task_id,
+            user_id: call.user_id,
+            recipient_phone: call.recipient_phone,
+            recipient_name: call.recipient_name,
+            call_type: call.call_type,
+            call_urgency: urgency.urgency,
+            attempt_number: (call.attempt_number ?? 0) + 1,
+            scheduled_at: retryAt.toISOString(),
+            status: 'scheduled',
+          });
+        }
+      }
     }
 
     return successResponse({ received: true });
   } catch (error: any) {
     console.error('Webhook error:', error);
-    return errorResponse(error.message || 'Webhook processing failed', 500);
+    return errorResponse(error.message ?? 'Webhook processing failed', 500);
   }
 }
