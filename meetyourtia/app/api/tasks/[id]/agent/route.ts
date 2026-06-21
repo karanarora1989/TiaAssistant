@@ -52,7 +52,8 @@ export async function PATCH(
     let callScheduled = false;
     let callReason = '';
 
-    if (agent_enabled && agent_call && task.assigned_to && task.due_date_iso) {
+    const effectiveAgentCall = agent_call ?? true;
+    if (agent_enabled && effectiveAgentCall && task.assigned_to && task.due_date_iso) {
       let recipientPhone = '';
       let recipientName = task.assigned_to;
 

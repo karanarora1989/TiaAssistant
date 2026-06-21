@@ -21,6 +21,7 @@ function deriveState(task: Task): AgentState {
 }
 
 const OUTCOME_BADGE: Record<string, { label: string; cls: string }> = {
+  confirmed_done:           { label: '✓ Confirmed done',        cls: 'bg-done-green/10 text-done-green border-done-green/20' },
   on_track:                { label: '✓ On track',              cls: 'bg-done-green/10 text-done-green border-done-green/20' },
   committed_new_eta:       { label: '🕐 New deadline',          cls: 'bg-gold/10 text-gold border-gold/20' },
   partial_progress:        { label: '↗ In progress',            cls: 'bg-work-blue/10 text-work-blue-text border-work-blue/20' },
@@ -57,6 +58,7 @@ export function AgentControl({ taskId, task, onUpdate }: AgentControlProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [callWarning, setCallWarning] = useState('');
 
   const agentState = deriveState(task);
   const statusDetails = task.status_details as any;
@@ -76,6 +78,7 @@ export function AgentControl({ taskId, task, onUpdate }: AgentControlProps) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update');
+      setCallWarning(data.data?.call_reason || '');
       onUpdate();
     } catch (e: any) {
       setError(e.message);
@@ -226,6 +229,9 @@ export function AgentControl({ taskId, task, onUpdate }: AgentControlProps) {
         </div>
       )}
 
+      {task.agent_enabled && callWarning && (
+        <p className="text-xs text-overdue-red px-1 pt-2">⚠️ {callWarning}</p>
+      )}
       {error && <p className="text-xs text-overdue-red px-1 pt-1">{error}</p>}
     </div>
   );
