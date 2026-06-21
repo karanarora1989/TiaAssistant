@@ -276,7 +276,6 @@ interface BottomNavProps {
 export function BottomNav({ pathname, onNavigate }: BottomNavProps) {
   const active = pathname.startsWith('/app/people') ? 'people'
     : pathname.startsWith('/app/tasks') ? 'tasks'
-    : pathname.startsWith('/app/chat') ? 'chat'
     : 'home';
 
   const items = [
