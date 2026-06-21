@@ -32,9 +32,12 @@ function getLongDate() {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] uppercase tracking-wider-08 text-text-ghost font-medium mb-3">
-      {children}
-    </p>
+    <div className="flex items-center gap-2 mb-3">
+      <div className="w-3 h-px bg-gold/40 flex-shrink-0" />
+      <p className="text-[11px] uppercase tracking-wider-08 text-text-ghost font-medium">
+        {children}
+      </p>
+    </div>
   );
 }
 
@@ -126,11 +129,14 @@ export default function HomeDashboard() {
         ) : (
           <>
             {/* Greeting */}
-            <div>
-              <h2 className="text-[22px] font-light tracking-tighter-02 text-text-primary leading-tight">
-                {getGreeting()}{firstName ? `, ${firstName}` : ''}
-              </h2>
-              <p className="text-xs text-text-secondary mt-0.5">{getLongDate()}</p>
+            <div className="relative">
+              <div className="absolute -top-6 -left-6 w-56 h-40 rounded-full bg-gold/5 blur-2xl pointer-events-none" />
+              <div className="relative">
+                <h2 className="text-[22px] font-light tracking-tighter-02 text-text-primary leading-tight">
+                  {getGreeting()}{firstName ? `, ${firstName}` : ''}
+                </h2>
+                <p className="text-xs text-text-secondary mt-0.5">{getLongDate()}</p>
+              </div>
             </div>
 
             {/* Error */}
@@ -154,7 +160,7 @@ export default function HomeDashboard() {
                 {todayChipCount > 0 && (
                   <button
                     onClick={() => router.push('/app/tasks')}
-                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-surface-1 border border-border-2 text-text-secondary"
+                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-surface-1 border border-gold/20 text-text-secondary"
                   >
                     {todayChipCount} {todayChipCount === 1 ? 'task' : 'tasks'} today
                   </button>
@@ -184,10 +190,13 @@ export default function HomeDashboard() {
                     onClick={item.action}
                     className="bg-surface-1 border border-border-2 rounded-2xl p-4
                                flex items-center justify-between cursor-pointer
+                               shadow-gold-subtle hover:shadow-gold-glow
                                active:scale-[0.98] transition-smooth"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-base">{item.icon}</span>
+                      <div className="w-8 h-8 rounded-full bg-gold/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm">{item.icon}</span>
+                      </div>
                       <span className="text-sm font-medium text-text-primary">{item.label}</span>
                     </div>
                     <span className="text-text-ghost text-xs">›</span>
@@ -202,11 +211,12 @@ export default function HomeDashboard() {
                 <SectionLabel>Needs Attention</SectionLabel>
                 <div className="space-y-3">
                   {interventionTasks.map(t => (
-                    <TaskCard
-                      key={t.id}
-                      task={t}
-                      onClick={() => router.push(`/app/tasks/${t.id}`)}
-                    />
+                    <div key={t.id} className="shadow-gold-strong rounded-2xl">
+                      <TaskCard
+                        task={t}
+                        onClick={() => router.push(`/app/tasks/${t.id}`)}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -218,11 +228,12 @@ export default function HomeDashboard() {
                 <SectionLabel>Today's Tasks</SectionLabel>
                 <div className="space-y-3">
                   {todayTasks.map(t => (
-                    <TaskCard
-                      key={t.id}
-                      task={t}
-                      onClick={() => router.push(`/app/tasks/${t.id}`)}
-                    />
+                    <div key={t.id} className="shadow-gold-subtle rounded-2xl">
+                      <TaskCard
+                        task={t}
+                        onClick={() => router.push(`/app/tasks/${t.id}`)}
+                      />
+                    </div>
                   ))}
                 </div>
                 {totalTodayCount > 3 && (
@@ -290,6 +301,10 @@ export default function HomeDashboard() {
         </>
       )}
 
+      <div
+        className="fixed bottom-[82px] right-5 w-14 h-14 rounded-full bg-gold/20 animate-pulse z-[39]"
+        style={{ transform: 'scale(1.45)' }}
+      />
       <FAB onClick={() => setSheetOpen(true)} icon="+" />
 
       <BottomNav
