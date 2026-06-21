@@ -124,7 +124,9 @@ export function AgentControl({ taskId, task, onUpdate }: AgentControlProps) {
             </p>
             {agentState === 'disabled' && (
               <p className="text-xs text-text-secondary">
-                Tia will call {task.assigned_to} and track this until it's done.
+                {task.assigned_to === 'self'
+                  ? 'Tia will call you to remind you about this.'
+                  : `Tia will call ${task.assigned_to} and track this until it's done.`}
               </p>
             )}
           </div>

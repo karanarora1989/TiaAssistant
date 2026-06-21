@@ -451,15 +451,15 @@ export default function TaskDetailPage() {
           }}
         />
 
-        {/* Agent Control — delegated tasks only */}
-        {task.assigned_to && task.assigned_to !== 'self' && (
+        {/* Agent Control */}
+        {task.assigned_to && (
           <div className="mb-6">
             <AgentControl taskId={taskId} task={task} onUpdate={fetchTask} />
           </div>
         )}
 
-        {/* Follow-up history — delegated tasks only */}
-        {task.assigned_to && task.assigned_to !== 'self' && aiCalls.length > 0 && (
+        {/* Follow-up history */}
+        {task.assigned_to && aiCalls.length > 0 && (
           <Card className="mb-6">
             <h3 className="text-xs text-text-secondary mb-4 uppercase tracking-wider-03">
               Follow-up history

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { getAuthUserId } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { successResponse, errorResponse } from '@/lib/api-handler';
+import { scheduleCall } from '@/lib/call-scheduler';
 
 /**
  * Toggle agent for a specific person
@@ -77,11 +78,39 @@ export async function PATCH(
         .eq('archived', false);
     }
 
-    return successResponse({ 
+    // Schedule calls for existing tasks when enabling
+    if (agent_enabled && person.phone_number) {
+      const { data: tasksToSchedule } = await supabaseAdmin
+        .from('tasks')
+        .select('id, due_date_iso')
+        .eq('user_id', userId)
+        .eq('assigned_to', person.name)
+        .eq('agent_enabled', true)
+        .neq('status', 'done')
+        .eq('archived', false);
+
+      for (const task of tasksToSchedule ?? []) {
+        if (task.due_date_iso) {
+          try {
+            await scheduleCall({
+              taskId: task.id,
+              userId,
+              recipientPhone: person.phone_number,
+              recipientName: person.name,
+            });
+          } catch (e) {
+            console.error(`Failed to schedule call for task ${task.id}:`, e);
+          }
+        }
+      }
+    }
+
+    return successResponse({
       agent_enabled,
-      message: agent_enabled 
-        ? `Agent enabled for all tasks assigned to ${person.name}` 
-        : `Agent disabled for ${person.name}`
+      phone_missing: agent_enabled && !person.phone_number,
+      message: agent_enabled
+        ? `Agent enabled for all tasks assigned to ${person.name}`
+        : `Agent disabled for ${person.name}`,
     });
 
   } catch (error: any) {

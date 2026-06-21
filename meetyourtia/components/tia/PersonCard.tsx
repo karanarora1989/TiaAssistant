@@ -77,7 +77,8 @@ export function PersonCard({ person, onUpdate }: PersonCardProps) {
         </div>
 
         {/* Agent Toggle */}
-        <div className="pt-3 border-t border-border-2 flex items-center justify-between">
+        <div className="pt-3 border-t border-border-2">
+        <div className="flex items-center justify-between">
           <span className="text-xs text-text-secondary">🤖 Agent</span>
           <button
             onClick={handleToggleAgent}
@@ -92,6 +93,12 @@ export function PersonCard({ person, onUpdate }: PersonCardProps) {
               }`}
             />
           </button>
+        </div>
+        {agentEnabled && !person.phone_number && (
+          <p className="text-[10px] text-overdue-red mt-1.5">
+            ⚠️ Add a phone number to enable calls
+          </p>
+        )}
         </div>
       </div>
     </Card>
