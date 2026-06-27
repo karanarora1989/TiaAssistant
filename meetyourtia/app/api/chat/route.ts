@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     await enforceRateLimit(userId);
 
     const body = await req.json();
-    const { messages, timezone } = body;
+    const { messages, clientLocalDate, clientLocalDateLong, clientLocalTime, timezone } = body;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return errorResponse('Messages are required', 400);
@@ -19,11 +19,11 @@ export async function POST(req: NextRequest) {
 
     const context = await buildContext(userId);
 
-    const tz = (typeof timezone === 'string' && timezone) ? timezone : 'UTC';
-    const now = new Date();
-    const localDate = now.toLocaleDateString('en-CA', { timeZone: tz });
-    const localDateLong = now.toLocaleDateString('en-US', { timeZone: tz, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const localTime = now.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: true });
+    // Use client-formatted datetime (browser Intl is always reliable; server Intl may lack full ICU)
+    const localDate     = clientLocalDate     || new Date().toISOString().split('T')[0];
+    const localDateLong = clientLocalDateLong || localDate;
+    const localTime     = clientLocalTime     || '';
+    const tz            = (typeof timezone === 'string' && timezone) ? timezone : 'UTC';
 
     const systemPrompt = `You are Tia, a sharp and warm AI executive assistant. You help your user stay on top of their work and personal tasks.
 

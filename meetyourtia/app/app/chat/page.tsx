@@ -43,6 +43,16 @@ const PRIORITY_DOT: Record<string, string> = {
   low: 'bg-green-500',
 };
 
+function getClientDatetime() {
+  const now = new Date();
+  return {
+    clientLocalDate:     now.toLocaleDateString('en-CA'),
+    clientLocalDateLong: now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+    clientLocalTime:     now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+    timezone:            Intl.DateTimeFormat().resolvedOptions().timeZone,
+  };
+}
+
 export default function ChatPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -89,7 +99,7 @@ export default function ChatPage() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+        body: JSON.stringify({ messages: history, ...getClientDatetime() }),
       });
       const data = await res.json();
 
@@ -125,7 +135,7 @@ export default function ChatPage() {
       const res = await fetch('/api/capture', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: userMessage, captureMethod: 'text', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+        body: JSON.stringify({ transcript: userMessage, captureMethod: 'text', ...getClientDatetime() }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to save');

@@ -8,6 +8,16 @@ import { UnresolvedPersonBanner } from '@/components/tia/UnresolvedPersonBanner'
 
 const MAX_DURATION = 300; // 5 minutes
 
+function getClientDatetime() {
+  const now = new Date();
+  return {
+    clientLocalDate:     now.toLocaleDateString('en-CA'),
+    clientLocalDateLong: now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+    clientLocalTime:     now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+    timezone:            Intl.DateTimeFormat().resolvedOptions().timeZone,
+  };
+}
+
 type ProcessingStage = 'transcribing' | 'extracting' | 'identifying' | 'scheduling' | 'done';
 
 interface ExtractedTask {
@@ -269,6 +279,7 @@ export default function VoiceCapturePage() {
         body: JSON.stringify({
           transcript: transcript.trim(),
           captureMethod: 'voice',
+          ...getClientDatetime(),
         }),
       });
 

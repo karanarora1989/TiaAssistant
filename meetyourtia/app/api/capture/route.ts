@@ -20,18 +20,17 @@ export async function POST(req: NextRequest) {
     await enforceFreeTierLimit(userId);
     
     const body = await req.json();
-    const { transcript, captureMethod = 'voice', timezone } = body;
+    const { transcript, captureMethod = 'voice', clientLocalDate, clientLocalDateLong, clientLocalTime, timezone } = body;
 
     if (!transcript || transcript.trim().length === 0) {
       return errorResponse('Transcript is required', 400);
     }
 
-    // Compute local date/time from client timezone
-    const tz = (typeof timezone === 'string' && timezone) ? timezone : 'UTC';
-    const now = new Date();
-    const localDate = now.toLocaleDateString('en-CA', { timeZone: tz });
-    const localDateLong = now.toLocaleDateString('en-US', { timeZone: tz, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const localTime = now.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: true });
+    // Use client-formatted datetime (browser Intl is always reliable; server Intl may lack full ICU)
+    const localDate     = clientLocalDate     || new Date().toISOString().split('T')[0];
+    const localDateLong = clientLocalDateLong || localDate;
+    const localTime     = clientLocalTime     || '';
+    const tz            = (typeof timezone === 'string' && timezone) ? timezone : 'UTC';
 
     // Build context from Brain + Soul
     const context = await buildContext(userId);
