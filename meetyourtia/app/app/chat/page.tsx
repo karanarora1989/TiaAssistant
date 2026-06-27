@@ -89,7 +89,7 @@ export default function ChatPage() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ messages: history, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
       });
       const data = await res.json();
 
@@ -125,7 +125,7 @@ export default function ChatPage() {
       const res = await fetch('/api/capture', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: userMessage, captureMethod: 'text' }),
+        body: JSON.stringify({ transcript: userMessage, captureMethod: 'text', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to save');

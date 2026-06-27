@@ -11,20 +11,25 @@ export async function POST(req: NextRequest) {
     await enforceRateLimit(userId);
 
     const body = await req.json();
-    const { messages } = body;
+    const { messages, timezone } = body;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return errorResponse('Messages are required', 400);
     }
 
     const context = await buildContext(userId);
-    const today = new Date().toISOString().split('T')[0];
+
+    const tz = (typeof timezone === 'string' && timezone) ? timezone : 'UTC';
+    const now = new Date();
+    const localDate = now.toLocaleDateString('en-CA', { timeZone: tz });
+    const localDateLong = now.toLocaleDateString('en-US', { timeZone: tz, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const localTime = now.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: true });
 
     const systemPrompt = `You are Tia, a sharp and warm AI executive assistant. You help your user stay on top of their work and personal tasks.
 
 ${context}
 
-Today's date is ${today}.
+Current date and time: ${localDateLong} at ${localTime} (${tz}).
 
 Your job in this chat:
 1. Respond conversationally and naturally — you're a trusted assistant, not a bot.
@@ -54,7 +59,7 @@ ALWAYS respond with valid JSON in this exact shape:
 }
 
 Rules:
-- due_date_iso is REQUIRED. If no date given, default to today (${today}).
+- due_date_iso is REQUIRED. If no date given, default to today (${localDate}).
 - Keep your message warm, concise, and human. No lists unless they add real value.
 - Never wrap JSON in markdown code blocks.
 - Only extract tasks that are genuinely actionable commitments — not hypotheticals or examples.`;

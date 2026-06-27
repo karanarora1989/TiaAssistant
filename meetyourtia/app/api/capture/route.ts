@@ -20,11 +20,18 @@ export async function POST(req: NextRequest) {
     await enforceFreeTierLimit(userId);
     
     const body = await req.json();
-    const { transcript, captureMethod = 'voice' } = body;
+    const { transcript, captureMethod = 'voice', timezone } = body;
 
     if (!transcript || transcript.trim().length === 0) {
       return errorResponse('Transcript is required', 400);
     }
+
+    // Compute local date/time from client timezone
+    const tz = (typeof timezone === 'string' && timezone) ? timezone : 'UTC';
+    const now = new Date();
+    const localDate = now.toLocaleDateString('en-CA', { timeZone: tz });
+    const localDateLong = now.toLocaleDateString('en-US', { timeZone: tz, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const localTime = now.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: true });
 
     // Build context from Brain + Soul
     const context = await buildContext(userId);
@@ -33,6 +40,9 @@ export async function POST(req: NextRequest) {
     const extractionPrompt = `You are Tia, an AI executive assistant. Extract task(s) from this voice note.
 
 ${context}
+
+Current date and time: ${localDateLong} at ${localTime} (${tz}).
+Use this to resolve relative times like "in 5 mins", "tomorrow", "next Monday", etc.
 
 Voice note: "${transcript}"
 
@@ -96,7 +106,8 @@ Return ONLY valid JSON array, no markdown.`;
       participants: task.participants || [],
       
       due_date: task.due_date || 'today',
-      due_date_iso: task.due_date_iso || new Date().toISOString().split('T')[0],
+      due_date_iso: task.due_date_iso || localDate,
+      due_time: task.due_time || null,
       time_sensitivity: task.time_sensitivity || 'flexible',
       task_domain: task.task_domain || 'work',
       entity_type: task.entity_type || null,
