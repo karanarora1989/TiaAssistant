@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { BottomNav, FAB, EmptyState, LoadingSpinner } from '@/components/tia/shared';
 import { PersonCard } from '@/components/tia/PersonCard';
+import { PersonEditSheet } from '@/components/tia/PersonEditSheet';
 import { Person } from '@/lib/supabase';
 
 export default function PeoplePage() {
@@ -12,6 +13,8 @@ export default function PeoplePage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editingPerson, setEditingPerson] = useState<Person | null>(null);
+  const [showAddSheet, setShowAddSheet] = useState(false);
 
   useEffect(() => {
     fetchPeople();
@@ -50,13 +53,21 @@ export default function PeoplePage() {
               Everyone you've mentioned in tasks
             </p>
           </div>
-          <button
-            onClick={() => router.push('/app/people/import')}
-            className="px-3 py-1.5 bg-gold-gradient rounded-lg text-xs font-medium text-surface-0 hover:scale-105 transition-smooth flex items-center gap-1"
-          >
-            <span>📇</span>
-            <span>Import</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAddSheet(true)}
+              className="px-3 py-1.5 border border-gold/40 rounded-lg text-xs font-medium text-gold hover:bg-gold/10 transition-smooth"
+            >
+              + Add
+            </button>
+            <button
+              onClick={() => router.push('/app/people/import')}
+              className="px-3 py-1.5 bg-gold-gradient rounded-lg text-xs font-medium text-surface-0 hover:scale-105 transition-smooth flex items-center gap-1"
+            >
+              <span>📇</span>
+              <span>Import</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -89,15 +100,26 @@ export default function PeoplePage() {
         {!loading && !error && people.length > 0 && (
           <div className="space-y-3">
             {people.map((person) => (
-              <PersonCard 
-                key={person.id} 
-                person={person} 
+              <PersonCard
+                key={person.id}
+                person={person}
                 onUpdate={fetchPeople}
+                onEdit={() => setEditingPerson(person)}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Edit / Add sheet */}
+      {(editingPerson !== null || showAddSheet) && (
+        <PersonEditSheet
+          person={editingPerson ?? undefined}
+          open
+          onClose={() => { setEditingPerson(null); setShowAddSheet(false); }}
+          onSaved={() => { setEditingPerson(null); setShowAddSheet(false); fetchPeople(); }}
+        />
+      )}
 
       {/* FAB - Voice Capture */}
       <FAB onClick={() => router.push('/app/voice')} icon="🎙" />
